@@ -1,0 +1,46 @@
+key,value
+vkDialogTitle,Virtual Keyboard Settings
+vkEditorTitle,Edit keyboard
+vkDialogBack,← Back
+vkLayoutHeading,Layout
+vkNew,New…
+vkImport,Import…
+vkStartFrom,Start from…
+vkCancel,Cancel
+vkCustomChip,custom
+vkEditThisTitle,Edit this layout
+vkEditSelectedTitle,Edit the selected custom layout
+vkEditIcon,✏️
+vkEditBtn,✏️ Edit
+vkLigatures,Ligatures
+vkCovIncomplete,incomplete
+vkCovCompleteLabel,Complete
+vkEditorLayerMain,Main
+vkEditorLayerShift,Shift
+vkEditorHint,"Tap a key to pick a glyph, or type its letter. Arrow/Tab move between keys."
+vkEditorPaletteLabel,Choose a glyph
+vkEditorAddPair,Add a ligature pair
+vkEditorManageLabel,This layout:
+vkEditorDownload,Download
+vkEditorDelete,Delete
+vkEditorSave,Save
+vkLayoutImperial,Shaw Imperial
+vkLayoutIgc,Imperial Good Companion
+vkLayoutQwerty,Shaw QWERTY
+vkLayout2layer,Shaw 2-layer (shift)
+vkLayoutJafl,Shaw-JAFL
+vkDescImperial,"The original Imperial Good Companion typewriter layout, with every compound on its own key."
+vkDescIgc,"Imperial, made compact: most compounds are built from their parts rather than given a key."
+vkDescQwerty,Familiar QWERTY positions — easiest transition from an existing habit.
+vkDesc2layer,"Compact: Shift reaches the full set, related glyphs paired on a key."
+vkDescJafl,Just Another Friggin’ Layout — key placement tuned for English letter frequency.
+vkCustomUnavailable,Custom keyboard (unavailable).
+vkEditorEditingLine,Editing: {{name}}
+vkEditorUnsaved,· unsaved changes
+vkEditorUntitled,untitled
+vkCovAllCharsVs1,✓ all {{n}} characters{{vs1}}
+vkCovMissingLine,⚠ {{count}} of {{total}} missing: {{glyphs}}{{more}}{{vs1}}
+vkCovVs1Suffix,· +{{n}} optional VS1
+vkCovMoreSuffix,+{{n}} more
+vkConfirmDelete,"Delete custom keyboard ""{{name}}""? This cannot be undone."
+vkConfirmDiscard,Discard unsaved changes and go back?

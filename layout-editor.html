@@ -1,0 +1,67 @@
+<!-- Layout-editor VIEW. Fetched by layout-editor.js on first open (via
+     getResourceUrl, like keyboard-settings.html) and injected into a host
+     container the vk settings dialog supplies — the editor is VIEW 2 of that one
+     dialog (view replacement, not a second modal), so this markup carries NO
+     overlay/backdrop of its own. Behaviour: layout-editor.js; styling:
+     layout-editor.css.
+
+     The editor opens LOCKED to a chosen custom (edit-in-place): there is no base
+     picker (new-from-clone is a roster action in view 1). Upload/Delete are roster
+     actions too. Save persists and returns to view 1; the dialog header's Back
+     returns to view 1 with a dirty check. -->
+<div id="layoutEditorModal">
+    <div class="le-header">
+        <!-- "Editing: <name>[ · unsaved changes]". -->
+        <div id="leEditingLine" class="le-editing-line"></div>
+    </div>
+    <div class="le-body">
+        <div class="le-controls">
+            <!-- Placeholders are deliberately untranslated: the script each one is
+                 written in is what tells you which script the field expects. -->
+            <input type="text" id="layoutEditorName" placeholder="Name">
+            <!-- Free text, may be empty; shown in the picker where built-ins show their canned description. -->
+            <input type="text" id="layoutEditorDescription" placeholder="Description">
+        </div>
+        <!-- Optional Shavian counterparts. Latin stays canonical (slug, filename,
+             leaderboard); these only change how the layout is LABELLED. -->
+        <div class="le-controls le-controls-shavian">
+            <input type="text" id="layoutEditorShavianName" placeholder="𐑯𐑱𐑥">
+            <input type="text" id="layoutEditorShavianDescription" placeholder="𐑛𐑦𐑕𐑒𐑮𐑦𐑐𐑖𐑩𐑯">
+        </div>
+
+        <!-- The type-to-fill field: an ORDINARY editable input the browser/OS/IME owns outright (we only read it on blur). The renderer moves it INTO the focused key/slot, seeded with that binding and selected whole, so editing happens in place; parked (1px off-screen) when nothing is focused. Never display:none — a hidden input can't take focus or drive an IME. -->
+        <input type="text" id="leGlyphInput" class="le-glyph-input le-glyph-input-parked"
+               aria-label="Type a glyph for the selected key"
+               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <!-- Layer tabs + coverage readout share a row above the keyboard. Both sit
+             outside .le-keyboard so they can't scroll away with it. -->
+        <div class="le-layer-bar">
+            <div class="le-layer-tabs" role="tablist">
+                <button id="leLayerMain" class="le-layer-tab le-layer-active" role="tab" data-i18n="vkEditorLayerMain" onclick="LayoutEditor.setLayer('main')">Main</button>
+                <button id="leLayerShift" class="le-layer-tab" role="tab" data-i18n="vkEditorLayerShift" onclick="LayoutEditor.setLayer('shift')">Shift</button>
+            </div>
+            <div id="leCoverage" class="le-coverage"></div>
+        </div>
+        <div id="layoutEditorKeyboard" class="le-keyboard le-keyboard-tabbed"></div>
+        <div class="le-hint" data-i18n="vkEditorHint">Tap a key, then type its letter. Arrow/Tab move between keys.</div>
+
+        <label class="le-section" data-i18n="vkLigatures">Ligatures</label>
+        <div id="layoutEditorLigatures"></div>
+
+        <div id="layoutEditorStatus" style="font-size: 0.9em; margin-top: 8px; display: none;"></div>
+    </div>
+    <!-- Manage verbs for THIS layout — moved here from the picker so the settings
+         tab stays calm. Download/Delete act on the open custom. Renaming is the
+         name field above, which sets both the Latin and Shavian names. -->
+    <div class="le-manage">
+        <span class="le-manage-label" data-i18n="vkEditorManageLabel">This layout:</span>
+        <button class="le-btn le-manage-btn" data-i18n="vkEditorDownload" onclick="LayoutEditor.download()">Download</button>
+        <button class="le-btn le-manage-btn le-manage-danger" data-i18n="vkEditorDelete" onclick="LayoutEditor.remove()">Delete</button>
+    </div>
+
+    <!-- Pinned action bar. Save is the single CTA: it validates, persists, and
+         returns to view 1. Back lives in the dialog header (one Back only). -->
+    <div class="le-footer">
+        <button class="settings-close-btn le-save" data-i18n="vkEditorSave" onclick="LayoutEditor.save()">Save</button>
+    </div>
+</div>

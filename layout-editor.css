@@ -1,0 +1,542 @@
+/* Layout-editor styling. Ships with the virtual-keyboard library (loaded via a
+   <link> alongside virtual-keyboard.css), so the editor exports whole to any
+   host / the browser extension. Markup: layout-editor.html; behaviour:
+   layout-editor.js. Rules are scoped to #layoutEditorModal / .le-* so they don't
+   touch the rest of a host page. */
+
+/* Editor glyph-picker: lift the vk above the editor's own content while open.
+   When the editor runs inside the top-layer #vk-settings-dialog, the picker JS
+   also reparents #virtualKeyboard into that dialog so it paints above the
+   ::backdrop (see promoteVkAboveBackdrop); this z-index keeps it above the
+   dialog's in-flow content too. Class added/removed by picker open/teardown. */
+body.le-picker-open #virtualKeyboard {
+    z-index: 2100;
+}
+
+/* The editor is VIEW 2 of the vk settings dialog (#vk-view-editor), not its own
+   overlay. It is a column: header, a scrollable body, then a pinned footer, so
+   the footer stays reachable while the body scrolls. The dialog gives the shell
+   its width and backdrop. */
+#layoutEditorModal {
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+}
+
+.le-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    overscroll-behavior: contain;
+}
+
+.le-header {
+    margin-bottom: 8px;
+}
+
+/* "Editing: <name> · based on <base> · unsaved changes" — muted, with the dirty
+   note tinted amber when present. */
+.le-editing-line {
+    font-size: 0.9em;
+    color: #666;
+}
+
+.le-editing-line.le-dirty {
+    color: #b06a1a;
+}
+
+/* Coverage line: ⚠ amber when incomplete, green ✓ when complete. */
+.le-coverage {
+    font-size: 0.85em;
+    font-weight: 500;
+}
+
+.le-coverage-ok {
+    color: #28a745;
+}
+
+.le-coverage-warn {
+    color: #d9822b;
+}
+
+/* Form controls do not inherit font-family, so the UA's system font wins unless
+   it is named on the control itself. The Shavian name/description carry VS1
+   variants, which only Inter-Alia draws (system-ui renders the bare base) — the
+   same defect the palette had, below. Applied to every control so the editor
+   reads as one surface. #leGlyphInput is excluded: it uses `font: inherit` to
+   take the font of whichever key it is moved into. */
+#layoutEditorModal input:not(.le-glyph-input),
+#layoutEditorModal button,
+#layoutEditorModal select,
+#layoutEditorModal textarea {
+    font-family: 'Inter-Alia', sans-serif;
+}
+
+/* Popup glyph palette: pops up beside the focused key/slot on a pointer tap.
+   FIXED to the viewport and appended to the dialog (not the scrolling .le-body),
+   so the dialog's scroll box can never clip it — layout-editor.js measures the
+   room above vs below and positions it on the roomier side. The z-index clears
+   the promoted #virtualKeyboard (2100) so the palette wins when both are up. */
+.le-palette {
+    position: fixed;
+    z-index: 2200;
+    display: grid;
+    grid-template-columns: repeat(var(--le-palette-columns), max-content);
+    justify-content: start;
+    gap: 4px;
+    padding: 8px;
+    max-width: calc(100vw - 16px);
+    border: 1px solid #d0d0d0;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22);
+}
+
+.le-palette-glyph {
+    min-width: 32px;
+    min-height: 36px;   /* a comfortable touch target on a phone */
+    padding: 0;
+    /* Named here, not on .le-palette: a button does not inherit font-family from
+       its container, and the page font lacks the VS1 variants (they'd show as
+       their bare bases). The palette sits outside #virtualKeyboard's font rule. */
+    font-family: 'Inter-Alia', sans-serif;
+    font-size: 20px;
+    line-height: 1;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background: #fafafa;
+    color: #222;
+    cursor: pointer;
+}
+
+/* A short tail row spans the whole grid and centres its own glyphs, so the
+   compounds and the variants sit under the middle of the block above. */
+.le-palette-tail-row {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+}
+
+.le-palette-glyph:hover {
+    border-color: #4a90d9;
+    background: #eaf3fb;
+}
+
+.le-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+#layoutEditorName,
+#layoutEditorDescription,
+#layoutEditorShavianName,
+#layoutEditorShavianDescription {
+    padding: 7px 8px;
+    font-size: 14px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    flex: 1;
+    min-width: 120px;
+}
+
+/* The name is capped at 20 characters — keep the box narrow so the limit is
+   implied before it is hit. Both names share one width so the Latin and Shavian
+   rows stay a two-by-two grid. Shrinkable (and no min-width) so the name and its
+   description keep sharing one row on a phone rather than wrapping. */
+#layoutEditorName,
+#layoutEditorShavianName {
+    flex: 0 1 140px;
+    min-width: 0;
+}
+
+/* The description is free prose — give it the rest of the row. */
+#layoutEditorDescription,
+#layoutEditorShavianDescription {
+    flex: 1 1 160px;
+    min-width: 0;
+}
+
+/* The Shavian row sits under its Latin counterpart, one gap tighter so the two
+   read as a pair rather than two unrelated control rows. */
+.le-controls-shavian {
+    margin-top: -6px;
+}
+
+/* Tabs sit left, coverage trails right. Wraps when the long missing-glyph form
+   won't fit, so the coverage text is never truncated; row-gap 0 keeps the tabs
+   flush against the panel when it does wrap. */
+.le-layer-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    column-gap: 12px;
+    row-gap: 0;
+    margin-top: 4px;
+}
+
+.le-layer-tabs {
+    display: flex;
+    gap: 2px;
+}
+
+/* Trails the tabs on one line when it fits; when the long form wraps it takes the
+   full width and sits under them, still above the keyboard. */
+.le-layer-bar .le-coverage {
+    margin-left: auto;
+    padding-bottom: 5px;
+}
+
+/* The active tab takes the keyboard panel's dark fill and keeps square bottom
+   corners, so it reads as joined to the panel it labels. */
+.le-layer-tab {
+    border: none;
+    background: #ececec;
+    padding: 6px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #555;
+    border-radius: 8px 8px 0 0;
+}
+
+.le-layer-tab.le-layer-active {
+    background: #2a2a2a;
+    color: #fff;
+}
+
+/* Square off the panel's top-left corner so the joined tab meets a flat edge. */
+.le-keyboard-tabbed {
+    border-top-left-radius: 0;
+}
+
+/* The editor keyboard sits in a dark panel, matching the on-screen keyboard.
+   Vertical padding is set on the panel (not the cloned body) so the keys keep
+   comfortable top/bottom breathing room even when the cloned body's own padding
+   drops to 3px under the real keyboard's mobile @media. Horizontal stays 8px. */
+.le-keyboard {
+    background: #2a2a2a;
+    border-radius: 8px;
+    padding: 12px 8px;
+    user-select: none;
+    /* The body now holds fixed (correctly-proportioned) key sizing, so a wide
+       keyboard scrolls horizontally here rather than reflowing to a squashed
+       aspect. No interactive-transform, so tap targets + the type-to-fill caret
+       stay put. */
+    overflow-x: auto;
+}
+
+/* In the editor each .key shows the physical key in the dim corner legend and
+   its bound glyph as the main legend. Children pass pointer events through so
+   the drop-target highlight doesn't flicker. */
+.le-keyboard .key {
+    cursor: grab;
+}
+
+.le-keyboard .key-main,
+.le-keyboard .key-shift {
+    pointer-events: none;
+}
+
+.le-keyboard .key-shift.le-key-cap {
+    top: 3px;
+    left: 5px;
+    transform: none;
+    font-size: 9px;
+    opacity: 0.5;
+}
+
+.le-keyboard .key-main {
+    font-size: 17px;
+}
+
+.le-key-disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+/* A bindable cap with no glyph on the active layer: dashed, tinted border so the
+   unbound keys are visible at a glance (coverage made per-key). */
+.le-keyboard .key.le-key-unbound {
+    border-style: dashed;
+    border-color: #7a5a2a;
+    background: #33302a;
+}
+
+/* The editor deliberately carries NO structure-gating rules of its own. The
+   clone is the real .keyboard-body with the real .key / .spacer / .mobile-only /
+   hide-mobile-non-imperial classes, so it obeys virtual-keyboard.css's own rules
+   for the actual viewport width: on a desktop-width viewport it renders the
+   desktop keyboard (number row for every layout, Tab/Caps/Enter present, Shift
+   on its own rows); on a narrow viewport the real @media(max-width:768px) block
+   fires — because the dialog is itself narrow then — and produces the coherent
+   mobile transform (Shift relocated to the space row, spacers, imperial-only
+   number row). The clone's structure-imperial class (stamped in renderKeyboard
+   from the base's family) is what those mobile rules gate on. Reproducing any of
+   that here as an editor-only ruleset is exactly what previously diverged from
+   the real keyboard, so it is intentionally absent. */
+
+/* At a narrow viewport the docked keyboard's @media(max-width:768px) rules make
+   keys flex:1 to fill the viewport — correct when the body IS the viewport, but in
+   the editor the body sits in a narrower dialog, so flex:1 + fixed height stretches
+   keys to the wrong aspect. Pin the DESKTOP fixed key sizing (square-key reference)
+   so the body takes its natural content width and rows don't reflow. Structure
+   gating (which keys show) is untouched — only sizing is pinned. Mirrors the
+   .vk-preview-body pinning in virtual-keyboard.css. */
+@media (max-width: 768px) {
+    .le-keyboard .keyboard-body {
+        width: max-content;
+    }
+
+    .le-keyboard .keyboard-row {
+        justify-content: center;
+        width: auto;
+    }
+
+    .le-keyboard .key {
+        flex: 0 0 auto;
+        min-width: 34px;
+        height: 34px;
+    }
+
+    .le-keyboard .key-wide      { flex: 0 0 auto; min-width: 50px; }
+    .le-keyboard .key-wider     { flex: 0 0 auto; min-width: 62px; }
+    .le-keyboard .key-widest    { flex: 0 0 auto; min-width: 82px; }
+    .le-keyboard .key-wide-half { flex: 0 0 auto; min-width: 42px; }
+    .le-keyboard .key-space     { flex: 0 0 auto; min-width: 200px; }
+}
+
+/* The Shift key toggles the edited layer instead of carrying a binding. It
+   highlights when the Shift layer is active so the user can see which layer
+   their edits land on. */
+.le-key-shift-toggle {
+    cursor: pointer;
+}
+
+.le-key-shift-toggle.le-shift-active {
+    background: #4a90d9;
+    color: #fff;
+}
+
+/* The type-to-fill <input> IS the focused target's editable buffer: the renderer
+   moves it into the focused key/slot so its content and the OS's native text
+   caret appear right where the glyph goes, and the vk engine folds the buffer in
+   place. Styled to disappear into the glyph area — transparent, inheriting the
+   cap's glyph font/size, centered — so it reads as the key's own legend. When no
+   target is focused it's parked (unfocused) but stays in the DOM. */
+.le-glyph-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: center;
+    outline: none;
+    caret-color: #f5a623;  /* the OS caret, tinted to match the focus ring */
+}
+
+/* Focus seeds this input with the current binding and selects it whole, so the
+   selection highlight is the "type to replace" affordance — tint it to match the
+   focus ring rather than leaving it to the browser's default blue. */
+.le-glyph-input::selection {
+    background: #f5a623;
+    color: #1a1a1a;
+}
+
+/* Parked (no target focused): keep it in the DOM and focusable but out of the
+   way — 1px off-screen — so tapping a key can still focus it to start typing. */
+.le-glyph-input-parked {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    font-size: 16px;  /* ≥16px stops iOS auto-zoom on focus */
+}
+
+/* The focused key/slot: a soft ring marks which target the editable input now
+   lives in. The glyph legend is replaced by the input (see .le-glyph-input),
+   which is seeded with that same glyph — so the cap looks unchanged until typed
+   into, and leaving without typing commits nothing. */
+.le-keyboard .key.le-focus,
+.le-slot.le-focus {
+    outline: 2px solid #f5a623;
+    outline-offset: -2px;
+}
+
+.le-hint {
+    color: #888;
+    font-size: 0.82em;
+    margin: 6px 0;
+}
+
+.le-section {
+    display: block;
+    margin: 14px 0 6px;
+    color: #666;
+    font-weight: normal;
+}
+
+/* Ligature pairs laid out in as many columns as fit, to cut the vertical height
+   of the list (it can grow long, and vertical space is scarce beside the
+   keyboard). auto-fill + minmax lets the browser do the counting: a phone gets
+   one column, an iPad or desktop three or more, with no breakpoint ladder and no
+   JS measuring. Rows flow row-major, so Tab navigation (which walks ligRows by
+   array index) reads left-to-right then down — natural reading order.
+   --le-lig-row-width is one row's intrinsic width: 3 slots (34px) + 2 ops
+   (~15px) + a delete button (~15px) + the flex gaps. */
+#layoutEditorLigatures {
+    --le-lig-row-width: 190px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--le-lig-row-width), 1fr));
+    justify-content: center;
+    gap: 4px 24px;
+}
+
+.le-lig-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 0;
+}
+
+.le-slot {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    border: 2px solid #d0d0d0;
+    border-radius: 5px;
+    background: #fff;
+}
+
+.le-slot-empty {
+    border-style: dashed;
+    background: #fafafa;
+}
+
+.le-lig-op {
+    color: #888;
+    font-size: 15px;
+}
+
+.le-lig-del {
+    margin-left: 4px;
+    border: none;
+    background: none;
+    color: #c0392b;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+/* The "add a pair here" placeholder: it occupies the next grid cell — exactly
+   where the row it creates will appear — so the list grows in place instead of
+   via a button parked below it. Sized like a slot so the cell reads as an empty
+   first slot waiting to be filled. */
+.le-lig-add {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    border: 2px dashed #d0d0d0;
+    border-radius: 5px;
+    background: #fafafa;
+    color: #888;
+    cursor: pointer;
+    padding: 0;
+}
+
+.le-lig-add:hover {
+    border-color: #888;
+    color: #444;
+}
+
+/* Pinned action bar (Back · Save · Done). stretch equalises heights; each flex:1
+   so the three share one row. Pinned below the scrolling .le-body. */
+/* Manage bar: per-layout verbs (Download/Delete), moved out of the picker.
+   Compact, above the main action footer. */
+.le-manage {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 10px;
+    margin-top: 10px;
+}
+
+.le-manage-label {
+    font-size: 13px;
+    color: #777;
+    margin-right: 2px;
+}
+
+.le-manage-btn {
+    padding: 5px 10px;
+    font-size: 13px;
+}
+
+.le-manage-danger {
+    color: #c0392b;
+    border-color: #e8c4c0;
+}
+
+.le-footer {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: stretch;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 12px;
+    margin-top: 10px;
+}
+
+.le-footer > button {
+    flex: 1;
+    min-width: 0;
+    margin-top: 0;
+}
+
+/* Save is the primary action — styled self-sufficiently (the library ships
+   without the site's .settings-close-btn). */
+.le-save {
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 2px solid #4a90d9;
+    border-radius: 8px;
+    background: #4a90d9;
+    color: #fff;
+    cursor: pointer;
+}
+
+.le-save:hover {
+    background: #3f7fc0;
+}
+
+.le-btn {
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background: #fff;
+    color: #444;
+    cursor: pointer;
+}
+
+.le-btn:hover {
+    background: #f3f3f3;
+}

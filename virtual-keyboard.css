@@ -1,0 +1,332 @@
+/* Load Inter-Alia Variable Font */
+@font-face {
+    font-family: 'Inter-Alia';
+    src: url('https://joro.io/fonts/InterAlia-VF.otf') format('opentype');
+    font-weight: 100 900;
+}
+
+/* Virtual Keyboard Floating Window */
+.virtual-keyboard {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #2a2a2a;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    cursor: move;
+    user-select: none;
+    font-family: 'Inter-Alia';
+    font-size: 100%;
+}
+
+/* Ensure consistent box model for all keyboard elements */
+.virtual-keyboard,
+.virtual-keyboard * {
+    box-sizing: border-box;
+}
+
+
+.keyboard-header {
+    background: #353535;
+    color: #aaa;
+    padding: 6px 10px;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: move;
+}
+
+.keyboard-title {
+    font-size: 11px;
+    font-weight: normal;
+    opacity: 0.8;
+}
+
+.keyboard-close {
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+    opacity: 0.5;
+    color: #999;
+}
+
+.keyboard-close:hover {
+    opacity: 1;
+    color: #fff;
+}
+
+.keyboard-body {
+    padding: 10px;
+    background: #2a2a2a;
+    border-radius: 0 0 12px 12px;
+}
+
+.keyboard-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+    justify-content: center;
+}
+
+.keyboard-row:last-child {
+    margin-bottom: 0;
+}
+
+.key {
+    background: #3d3d3d;
+    border: 1px solid #4a4a4a;
+    border-radius: 5px;
+    padding: 7px;
+    min-width: 34px;
+    height: 34px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    color: #e0e0e0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: background 0.1s ease, transform 0.1s ease, box-shadow 0.1s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.key:hover {
+    background: #4a4a4a;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+}
+
+.key:active,
+.key.active {
+    background: #555;
+    color: white;
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    border-color: #666;
+}
+
+/* Dual-legend key structure */
+.key-main {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.key-shift {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) translateY(-150%);
+    opacity: 0.4;
+    font-size: 0.85em;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+    pointer-events: none;
+}
+
+/* Armed state: this key would complete a ligature; its main legend previews
+   the result glyph. Tinted so the preview reads as provisional, not typed. */
+.key.armed {
+    background: #2f4858;
+    border-color: #4a7a99;
+}
+
+.key.armed .key-main {
+    color: #7fd4ff;
+}
+
+/* Slide-down state: shift legend slides down to replace main */
+.key.slide-down .key-main {
+    transform: translate(-50%, -50%) translateY(150%);
+    opacity: 0;
+}
+
+.key.slide-down .key-shift {
+    transform: translate(-50%, -50%) translateY(0);
+    opacity: 1;
+    font-size: 1em;
+}
+
+
+/* Key size variations */
+.key-wide {
+    min-width: 50px;
+}
+
+.key-wider {
+    min-width: 62px;
+}
+
+.key-widest {
+    min-width: 82px;
+}
+
+.key-space {
+    min-width: 312px;
+}
+
+/* Desktop-only keys (hidden on mobile) */
+.key.mobile-only {
+    display: none !important;
+}
+
+/* Spacers for mobile alignment */
+.spacer {
+    display: none;
+}
+
+.spacer.mobile-only {
+    display: none;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .virtual-keyboard {
+        bottom: 0;
+        right: 0;
+        left: 0;
+        max-width: 100%;
+        border-radius: 12px 12px 0 0;
+        /* Safe area insets for notched devices and iOS home indicator */
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+
+    .keyboard-body {
+        padding: 3px;
+    }
+
+    /* The keyboard-body carries a structure-imperial class when the active
+       layout's structural family is imperial (see updateKeyboardLabels in
+       virtual-keyboard.js, which derives it from
+       VirtualKeyboard.structuralFamilyOf). That resolver maps both the imperial
+       and igc built-ins — and any custom layout cloned from them via
+       layout.base — to the imperial number-row geometry. The mobile structural
+       rules below gate on this family class, not on the layout name, so a
+       custom clone of imperial renders with its number row intact. */
+
+    /* Hide number row and certain keys for non-imperial layouts on mobile */
+    .keyboard-body:not(.structure-imperial) .hide-mobile-non-imperial {
+        display: none !important;
+    }
+
+    /* Show spacers with hide-mobile-non-imperial on imperial layouts */
+    .keyboard-body.structure-imperial .spacer.hide-mobile-non-imperial {
+        display: block !important;
+    }
+
+    /* Show keys/spacers only for non-imperial layouts on mobile */
+    .show-mobile-non-imperial {
+        display: none !important;
+    }
+
+    .keyboard-body:not(.structure-imperial) .show-mobile-non-imperial {
+        display: block !important;
+    }
+
+    .keyboard-row {
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .key {
+        flex: 1;
+        min-width: 0;
+        height: 38px;
+        padding: 4px;
+        font-size: 12px;
+    }
+
+    .key-wide {
+        flex: 1.5;
+    }
+
+    .key-wider {
+        flex: 1.75;
+    }
+
+    .key-widest {
+        flex: 2;
+    }
+
+    .key-space {
+        flex: 6;
+    }
+
+    /* 1.5x width key for mobile shift keys */
+    .key-wide-half {
+        flex: 1.5;
+    }
+
+    /* Show/hide keys based on mobile/desktop */
+    .key.desktop-only {
+        display: none !important;
+    }
+
+    .key.mobile-only {
+        display: flex !important;
+    }
+
+    /* Show spacers on mobile (unless they should be hidden for imperial layouts) */
+    .spacer.mobile-only:not(.show-mobile-non-imperial) {
+        display: block !important;
+    }
+
+    .keyboard-body:not(.structure-imperial) .spacer.mobile-only.show-mobile-non-imperial {
+        display: block !important;
+    }
+
+    /* Space row layout on mobile */
+    .keyboard-row:last-child {
+        display: flex;
+        justify-content: flex-start;
+        gap: 4px;
+    }
+
+    /* Row indentation removed - keys fill full width */
+    .keyboard-body .keyboard-row:nth-child(1),
+    .keyboard-body .keyboard-row:nth-child(2),
+    .keyboard-body .keyboard-row:nth-child(3),
+    .keyboard-body .keyboard-row:nth-child(4),
+    .keyboard-body .keyboard-row:nth-child(5) {
+        padding-left: 0;
+    }
+
+    /* --- Preview keyboard: FIXED intrinsic proportions ---
+       The docked keyboard uses flex:1 keys that fill the viewport width, which is
+       correct when the body IS the viewport. But a preview body sits in a narrower
+       host, so flex:1 + fixed height stretches keys to the wrong aspect. Here we
+       restore the DESKTOP fixed key sizing (the square-key reference) so the body
+       sizes to its natural content width and rows don't reflow; the uniform
+       transform: scale() in scalePreviewToWidth then fits it to the host WITHOUT
+       distorting the ratio. Structure gating (which keys show) is untouched — only
+       sizing is pinned. The editor pins the same way in layout-editor.css. */
+    .vk-preview-body.keyboard-body {
+        width: max-content;
+    }
+
+    .vk-preview-body .keyboard-row {
+        justify-content: center;
+        width: auto;
+    }
+
+    .vk-preview-body .key {
+        flex: 0 0 auto;
+        min-width: 34px;
+        height: 34px;
+    }
+
+    .vk-preview-body .key-wide      { flex: 0 0 auto; min-width: 50px; }
+    .vk-preview-body .key-wider     { flex: 0 0 auto; min-width: 62px; }
+    .vk-preview-body .key-widest    { flex: 0 0 auto; min-width: 82px; }
+    .vk-preview-body .key-wide-half { flex: 0 0 auto; min-width: 42px; }
+    .vk-preview-body .key-space     { flex: 0 0 auto; min-width: 200px; }
+}
