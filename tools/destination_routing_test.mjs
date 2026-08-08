@@ -6,21 +6,14 @@
 // also makes it a tap destination while it holds focus, which is what lets those
 // hosts route taps without adding a call.
 //
-// Loads virtual-keyboard.js under a window/document stub, so it constrains the
+// Imports virtual-keyboard.js under a window/document stub, so it constrains the
 // shipped code rather than a restatement of it.
 //
 // Usage: node tools/destination_routing_test.mjs
 
-import fs from 'node:fs';
-import vm from 'node:vm';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-
 let passed = 0, failed = 0;
-function check(name, fn) {
-  try { fn(); console.log('  ok  ' + name); passed++; }
+async function check(name, fn) {
+  try { await fn(); console.log('  ok  ' + name); passed++; }
   catch (e) { console.log('FAIL  ' + name + '\n        ' + e.message); failed++; }
 }
 function assert(cond, msg) { if (!cond) throw new Error(msg || 'assertion failed'); }
@@ -54,8 +47,12 @@ function fakeInput(id) {
 
 // Enough of a document for the library's focus tracking: focusin listeners, an
 // activeElement, and containment. `attached` models a node removed from the DOM.
-function loadVirtualKeyboard() {
-  const file = path.join(ROOT, 'virtual-keyboard.js');
+//
+// Each call re-imports the library under a unique query string: module instances
+// are cached per URL, and these tests need the module-scope state (focus
+// tracking, the destination override) reset between them.
+let loadCount = 0;
+async function loadVirtualKeyboard() {
   const listeners = {};
   const byId = {};
   const document = {
@@ -68,20 +65,15 @@ function loadVirtualKeyboard() {
     getElementById: (id) => byId[id] || null,
     contains: (el) => !!el && el.attached !== false,
   };
-  const sandbox = {
-    window: {},
-    document,
-    navigator: { platform: 'MacIntel', userAgent: 'node' },
-    localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
-    InputEvent: class { constructor(type, init) { Object.assign(this, init); this.type = type; } },
-    Intl,
-    console,
-  };
-  sandbox.globalThis = sandbox;
-  vm.createContext(sandbox);
-  new vm.Script(fs.readFileSync(file, 'utf8'), { filename: file }).runInContext(sandbox);
-  const api = sandbox.window.VirtualKeyboard;
-  assert(api && api._internal, 'virtual-keyboard.js did not publish window.VirtualKeyboard._internal');
+  globalThis.window = {};
+  globalThis.document = document;
+  globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+  globalThis.InputEvent = class { constructor(type, init) { Object.assign(this, init); this.type = type; } };
+  // Node defines navigator as a getter-only global, so plain assignment throws.
+  Object.defineProperty(globalThis, 'navigator', {
+    value: { platform: 'MacIntel', userAgent: 'node' }, configurable: true });
+  const { VirtualKeyboard: api } = await import(`../virtual-keyboard.js?t=${++loadCount}`);
+  assert(api && api._internal, 'virtual-keyboard.js did not export VirtualKeyboard._internal');
 
   // Drive focus the way a browser would: set activeElement, then fire focusin.
   const focus = (el) => {
@@ -92,22 +84,22 @@ function loadVirtualKeyboard() {
   return { api, focus, register, document };
 }
 
-check('with nothing registered, taps still target #typingInput', () => {
-  const { api, register } = loadVirtualKeyboard();
+await check('with nothing registered, taps still target #typingInput', async () => {
+  const { api, register } = await loadVirtualKeyboard();
   const practice = fakeInput('typingInput');
   register('typingInput', practice);
   assert(api.getDestinationInput() === practice,
     'the practice input must stay the default so shaw-type is unaffected');
 });
 
-check('with nothing registered and no #typingInput, there is no destination', () => {
-  const { api } = loadVirtualKeyboard();
+await check('with nothing registered and no #typingInput, there is no destination', async () => {
+  const { api } = await loadVirtualKeyboard();
   assert(api.getDestinationInput() === null,
     'a page with neither must report no destination rather than inventing one');
 });
 
-check('keyboard-enabling a field makes taps follow focus to it', () => {
-  const { api, focus } = loadVirtualKeyboard();
+await check('keyboard-enabling a field makes taps follow focus to it', async () => {
+  const { api, focus } = await loadVirtualKeyboard();
   const field = fakeInput('hostField');
   api.enableInterception(field);
   focus(field);
@@ -115,8 +107,8 @@ check('keyboard-enabling a field makes taps follow focus to it', () => {
     'a registered, focused field must receive taps — this is the whole feature');
 });
 
-check('taps follow focus between two keyboard-enabled fields', () => {
-  const { api, focus } = loadVirtualKeyboard();
+await check('taps follow focus between two keyboard-enabled fields', async () => {
+  const { api, focus } = await loadVirtualKeyboard();
   const first = fakeInput('first');
   const second = fakeInput('second');
   api.enableInterception(first);
@@ -127,8 +119,8 @@ check('taps follow focus between two keyboard-enabled fields', () => {
   assert(api.getDestinationInput() === second, 'taps must follow the caret to the second field');
 });
 
-check('focusing a field that never opted in does not capture taps', () => {
-  const { api, focus, register } = loadVirtualKeyboard();
+await check('focusing a field that never opted in does not capture taps', async () => {
+  const { api, focus, register } = await loadVirtualKeyboard();
   const practice = fakeInput('typingInput');
   register('typingInput', practice);
   const enabled = fakeInput('enabled');
@@ -142,8 +134,8 @@ check('focusing a field that never opted in does not capture taps', () => {
 // The editor's Latin name field is deliberately NOT keyboard-enabled: it drives
 // the slug and download filename and must stay Latin. Opting out has to mean
 // taps never reach it, even when it is the focused element.
-check('an opted-out field never becomes the destination', () => {
-  const { api, focus } = loadVirtualKeyboard();
+await check('an opted-out field never becomes the destination', async () => {
+  const { api, focus } = await loadVirtualKeyboard();
   const shavianName = fakeInput('layoutEditorShavianName');
   const latinName = fakeInput('layoutEditorName');
   api.enableInterception(shavianName);
@@ -153,8 +145,8 @@ check('an opted-out field never becomes the destination', () => {
     'the Latin name field opted out; taps must never insert Shavian into it');
 });
 
-check('registering an already-focused field captures it', () => {
-  const { api, document } = loadVirtualKeyboard();
+await check('registering an already-focused field captures it', async () => {
+  const { api, document } = await loadVirtualKeyboard();
   const field = fakeInput('lateAttach');
   document.activeElement = field;   // focused BEFORE the host wired it up
   api.enableInterception(field);
@@ -162,8 +154,8 @@ check('registering an already-focused field captures it', () => {
     'hosts attach on focusin, so the triggering field is already focused');
 });
 
-check('setDestination still overrides focus', () => {
-  const { api, focus } = loadVirtualKeyboard();
+await check('setDestination still overrides focus', async () => {
+  const { api, focus } = await loadVirtualKeyboard();
   const pinned = fakeInput('pinned');
   const focused = fakeInput('focused');
   api.enableInterception(focused);
@@ -176,8 +168,8 @@ check('setDestination still overrides focus', () => {
     'clearing the override must fall back to the focused field');
 });
 
-check('releasing interception stops taps reaching the field', () => {
-  const { api, focus, register } = loadVirtualKeyboard();
+await check('releasing interception stops taps reaching the field', async () => {
+  const { api, focus, register } = await loadVirtualKeyboard();
   const practice = fakeInput('typingInput');
   register('typingInput', practice);
   const dialogField = fakeInput('dialogField');
@@ -191,8 +183,8 @@ check('releasing interception stops taps reaching the field', () => {
 
 // Hosts tear dialogs down without releasing first; inserting into a detached
 // node writes into nothing, silently losing what the user typed.
-check('a detached field is not used as a destination', () => {
-  const { api, focus, register } = loadVirtualKeyboard();
+await check('a detached field is not used as a destination', async () => {
+  const { api, focus, register } = await loadVirtualKeyboard();
   const practice = fakeInput('typingInput');
   register('typingInput', practice);
   const field = fakeInput('removed');
@@ -203,8 +195,8 @@ check('a detached field is not used as a destination', () => {
     'taps must fall back rather than insert into a removed element');
 });
 
-check('setDestination still rejects a non-value-bearing element', () => {
-  const { api } = loadVirtualKeyboard();
+await check('setDestination still rejects a non-value-bearing element', async () => {
+  const { api } = await loadVirtualKeyboard();
   assertThrows(() => api.setDestination({ tagName: 'DIV' }),
     'setDestination must fail loudly on an element it cannot drive');
 });

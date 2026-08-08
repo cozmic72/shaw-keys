@@ -9,15 +9,10 @@
 // host (the game) reacts by repopulating selectors and re-applying if the active
 // layout moved.
 //
-// Plain script (no modules/bundler), exposing window.LayoutEditor, matching
-// virtual-keyboard.js / custom-layouts.js. Loaded AFTER those two, so it reaches
-// them via window.VirtualKeyboard / window.CustomLayouts. The whole module lives
-// in an IIFE so its internals (state, el, byId, open/close, …) stay private —
-// these scripts share one global scope, where a bare top-level `function open`
-// would clobber window.open and generic names risk a fatal duplicate-const
-// collision.
-(function () {
-'use strict';
+// An ES module: its internals (state, el, byId, open/close, …) stay private to
+// module scope, so the IIFE this file used to need is gone.
+import { VirtualKeyboard } from './virtual-keyboard.js';
+import { CustomLayouts } from './custom-layouts.js';
 
 // ---------------------------------------------------------------------------
 // Physical keyboard the editor draws. Rather than maintain its own grid, the
@@ -44,7 +39,7 @@ const SPECIAL_KEYS = new Set(['Tab', 'CapsLock', 'Enter', 'Backspace']);
 // ONE canonical map (CustomLayouts.shiftedTokenOf) so the editor's shift forms and
 // the coverage computation can't drift. Space (no shift form) resolves to null.
 function shiftOf(token) {
-    return window.CustomLayouts.shiftedTokenOf(token);
+    return CustomLayouts.shiftedTokenOf(token);
 }
 
 // ---------------------------------------------------------------------------
@@ -166,7 +161,7 @@ function byId(id) {
 
 // ---------------------------------------------------------------------------
 // Library access. The editor is library code: it resolves everything it needs
-// from window.VirtualKeyboard / window.CustomLayouts directly, rather than
+// from VirtualKeyboard / CustomLayouts directly, rather than
 // through injected host callbacks.
 // ---------------------------------------------------------------------------
 
@@ -189,7 +184,7 @@ function getTemplate() {
 
 // Resolve any layout id (built-in or custom:) to its bare layout data.
 function getLayoutData(id) {
-    return window.VirtualKeyboard._internal.getKeyboardLayoutData(id);
+    return VirtualKeyboard._internal.getKeyboardLayoutData(id);
 }
 
 // ---------------------------------------------------------------------------
@@ -248,7 +243,7 @@ function pickerFoldLigatures() {
 }
 
 function setupPicker() {
-    const vk = window.VirtualKeyboard;
+    const vk = VirtualKeyboard;
     vk.setFoldLigatures(pickerFoldLigatures);
     // Keyboard-enable the glyph input: physical typing gets latin->glyph
     // translation and folding against that same table (so typed and tapped
@@ -264,7 +259,7 @@ function setupPicker() {
 }
 
 function teardownPicker() {
-    const vk = window.VirtualKeyboard;
+    const vk = VirtualKeyboard;
     if (stopInterception) {   // close() also runs on a dialog never opened into the editor
         stopInterception();
         stopInterception = null;
@@ -429,7 +424,7 @@ async function ensureMarkup(hostEl) {
     if (markupInjected) {
         return;
     }
-    const vk = window.VirtualKeyboard;
+    const vk = VirtualKeyboard;
     const url = vk._internal.getResourceUrl('layout-editor.html');
     const response = await fetch(url);
     if (!response.ok) {
@@ -481,7 +476,7 @@ async function open(startId, opts) {
     // the caps being edited, and the palette is the primary input path. Cmd/Ctrl+K
     // brings it in for anyone who wants it (screen space, a physical keyboard).
     setupPicker();
-    window.VirtualKeyboard.hide();
+    VirtualKeyboard.hide();
 }
 
 // Tear the editor down. Called on EVERY close/exit path (back, save, dialog
@@ -598,7 +593,7 @@ function onNameInput(ev) {
 // `maxlength`'s UTF-16 units, so a Shavian name (surrogate pairs, VS1 clusters)
 // gets the same number of LETTERS as a Latin one rather than half.
 function capNameInput(input) {
-    const cap = window.VirtualKeyboard._internal.NAME_CAP_GRAPHEMES;
+    const cap = VirtualKeyboard._internal.NAME_CAP_GRAPHEMES;
     const graphemes = toGraphemes(input.value);
     if (graphemes.length <= cap) {
         return;
@@ -634,8 +629,8 @@ async function loadBase(id) {
     // Straight from the RECORD, not the picker's script-aware label: the editor
     // authors each field, so each input must show its own field verbatim. A
     // built-in clone and any field a record never carried both load as ''.
-    const record = isCustom ? window.CustomLayouts.getCustomLayout(id) : null;
-    const metadata = window.CustomLayouts.layoutMetadata(record);
+    const record = isCustom ? CustomLayouts.getCustomLayout(id) : null;
+    const metadata = CustomLayouts.layoutMetadata(record);
     for (const [field, inputId] of Object.entries(METADATA_INPUTS)) {
         byId(inputId).value = metadata[field];
     }
@@ -686,12 +681,12 @@ function renderLayerButtons() {
 
 // Shorthand for the library's UI-string resolver (active script, Latin fallback).
 function t(key, fallback, vars) {
-    return window.VirtualKeyboard._internal.vkString(key, fallback, vars);
+    return VirtualKeyboard._internal.vkString(key, fallback, vars);
 }
 
 // Shorthand for the library's grapheme splitter (see virtual-keyboard.js).
 function toGraphemes(text) {
-    return window.VirtualKeyboard._internal.toGraphemes(text);
+    return VirtualKeyboard._internal.toGraphemes(text);
 }
 
 // Header line: "Editing: <name>[ · unsaved changes]". The name tracks the live
@@ -704,7 +699,7 @@ function renderEditingLine() {
     }
     const latin = byId('layoutEditorName');
     const shavian = byId('layoutEditorShavianName');
-    const name = window.VirtualKeyboard._internal.preferredScriptLabel(
+    const name = VirtualKeyboard._internal.preferredScriptLabel(
         (latin && latin.value.trim()) || '',
         (shavian && shavian.value.trim()) || ''
     ) || t('vkEditorUntitled', 'untitled');
@@ -729,7 +724,7 @@ function renderCoverage() {
     if (!line) {
         return;
     }
-    const cov = window.CustomLayouts.coverage(buildBareLayout());
+    const cov = CustomLayouts.coverage(buildBareLayout());
     const vs1Note = cov.vs1Optional.produced > 0
         ? ' ' + t('vkCovVs1Suffix', '· +{{n}} optional VS1', { n: cov.vs1Optional.produced })
         : '';
@@ -753,7 +748,7 @@ function renderCoverage() {
 // static data-i18n chrome and re-renders the string-built dynamic lines.
 function refreshStrings() {
     if (!markupInjected) return;
-    window.VirtualKeyboard._internal.applyUiStrings(document.getElementById('layoutEditorModal'));
+    VirtualKeyboard._internal.applyUiStrings(document.getElementById('layoutEditorModal'));
     renderEditingLine();
     renderCoverage();
 }
@@ -774,7 +769,7 @@ function back() {
 // when editing a not-yet-saved layout (no slug to manage). The manage verbs guard
 // on this — you can't download/delete an unsaved draft.
 function openLayoutId() {
-    const CL = window.CustomLayouts;
+    const CL = CustomLayouts;
     return state.editingSlug ? CL.CUSTOM_ID_PREFIX + state.editingSlug : null;
 }
 
@@ -788,19 +783,19 @@ function requireSavedLayout() {
 
 function download() {
     const id = requireSavedLayout();
-    if (id) window.VirtualKeyboard._internal.downloadCustomLayout(id);
+    if (id) VirtualKeyboard._internal.downloadCustomLayout(id);
 }
 
 async function remove() {
     const id = requireSavedLayout();
     if (!id) return;
-    const before = window.CustomLayouts.getCustomLayout(id);
+    const before = CustomLayouts.getCustomLayout(id);
     // Await the delete: when the deleted layout was active it applies the host
     // default and notifies BEFORE resolving, so the onExit re-render (showPickerView)
     // below sees the settled fallback layout, not an empty selection.
-    await window.VirtualKeyboard._internal.deleteCustomLayout(id);
+    await VirtualKeyboard._internal.deleteCustomLayout(id);
     // deleteCustomLayout confirms + deletes; if the record is now gone, leave.
-    if (before && !window.CustomLayouts.getCustomLayout(id)) {
+    if (before && !CustomLayouts.getCustomLayout(id)) {
         close();
         if (state.onExit) state.onExit();
     }
@@ -1171,7 +1166,7 @@ function renderKeyboard() {
     // being cloned — so it is the resolver's layoutName directly; a null base
     // (older custom lacking one) resolves to the default 'compact' family.
     const isImperial =
-        window.VirtualKeyboard._internal.structuralFamilyOf(state.base) === 'imperial';
+        VirtualKeyboard._internal.structuralFamilyOf(state.base) === 'imperial';
     clone.classList.toggle('structure-imperial', isImperial);
 
     // Decorate every real key cap with the editor's binding behaviour.
@@ -1506,7 +1501,7 @@ function save() {
 
     const bare = buildBareLayout();
     try {
-        window.CustomLayouts.validateLayout(bare);
+        CustomLayouts.validateLayout(bare);
     } catch (e) {
         setStatus(e.message);
         return;
@@ -1533,8 +1528,8 @@ function save() {
 // activeChanged so the host re-applies it (word lists etc.). Returns the saved
 // slug so the editor can switch into edit-in-place mode.
 async function persist(bare, metadata, slug) {
-    const CL = window.CustomLayouts;
-    const vk = window.VirtualKeyboard;
+    const CL = CustomLayouts;
+    const vk = VirtualKeyboard;
     let record;
     if (slug) {
         const existing = CL.getCustomLayout(slug);
@@ -1554,7 +1549,7 @@ async function persist(bare, metadata, slug) {
     return record.name;
 }
 
-window.LayoutEditor = {
+export const LayoutEditor = {
     open: open,
     close: close,
     save: save,
@@ -1595,4 +1590,11 @@ window.LayoutEditor = {
     _PALETTE_COLUMNS: PALETTE_COLUMNS,
 };
 
-})();
+// custom-layouts.js derives its VS1 bonus targets from the palette this module
+// ships; the import cycle between the two is resolved by the browser.
+export { SHAVIAN_PALETTE };
+
+// Transition surface: the consumers still reach the library through globals.
+// Delete these three assignments (here, virtual-keyboard.js and
+// custom-layouts.js) once every consumer imports instead.
+window.LayoutEditor = LayoutEditor;

@@ -6,9 +6,13 @@
 // display name and timestamps, store the records in one localStorage blob
 // keyed by slug, and address them app-wide by the id "custom:<slug>".
 //
-// This module is a plain script (no modules/bundler), exposing its helpers on
-// window like utils.js / game-state.js do, so it can be <script src>'d before
-// main.js.
+// An ES module. It imports SHAVIAN_PALETTE from the editor, which imports this
+// module back; the cycle is real and the browser resolves it, because only
+// vs1TargetChars() reads the palette and it runs long after both bodies have
+// executed.
+
+import { SHAVIAN_PALETTE } from './layout-editor.js';
+import { getComponentToLigature, formLigatures, isBuiltInLayoutName } from './virtual-keyboard.js';
 
 const CUSTOM_LAYOUTS_KEY = 'customLayouts';
 const CUSTOM_LAYOUT_SCHEMA = 1;
@@ -95,7 +99,7 @@ const REQUIRED_CHARS = (function buildRequiredChars() {
 // required. Derived from whichever base letters carry VS1 variants in the palette
 // the editor ships (SHAVIAN_PALETTE), so this stays in sync with what's typeable.
 function vs1TargetChars() {
-    const palette = (window.LayoutEditor && window.LayoutEditor.SHAVIAN_PALETTE) || [];
+    const palette = SHAVIAN_PALETTE;
     return palette.filter(ch => Array.from(ch).length === 2 && ch.endsWith(VS1_SELECTOR));
 }
 
@@ -107,7 +111,7 @@ function producibleChars(bare) {
     const keys = (bare && bare.keys) || {};
     const ligatures = (bare && bare.ligatures) || {};
     const produced = new Set(Object.values(keys));
-    const componentToLigature = window.VirtualKeyboard.getComponentToLigature({ ligatures });
+    const componentToLigature = getComponentToLigature({ ligatures });
     // Fixpoint: a compound becomes producible once all its components are, which
     // may in turn unlock a compound built from it. Loop until nothing new appears.
     let grew = true;
@@ -117,7 +121,7 @@ function producibleChars(bare) {
             if (produced.has(result)) continue;
             for (const spelling of spellings) {
                 if (spelling.every(component => produced.has(component)) &&
-                    window.VirtualKeyboard.formLigatures(spelling.join(''), componentToLigature) === result) {
+                    formLigatures(spelling.join(''), componentToLigature) === result) {
                     produced.add(result);
                     grew = true;
                     break;
@@ -246,7 +250,7 @@ function validateLayout(layoutObj) {
     //     it silently resolve to the default 'compact' family.
     if (layoutObj.base !== undefined) {
         if (typeof layoutObj.base !== 'string' ||
-            !window.VirtualKeyboard._internal.isBuiltInLayoutName(layoutObj.base)) {
+            !isBuiltInLayoutName(layoutObj.base)) {
             throw new Error(
                 `Layout "base" must name a built-in layout (got ` +
                 `"${layoutObj.base}").`);
@@ -475,10 +479,9 @@ function isCustomLayoutId(id) {
     return typeof id === 'string' && id.startsWith(CUSTOM_ID_PREFIX);
 }
 
-// Expose on window, matching the plain-script pattern of the other modules.
 // analyticsLayoutId/leaderboardLayoutName intentionally live in the site
 // (utils.js) — they're leaderboard/analytics concerns, not keyboard-store ones.
-window.CustomLayouts = {
+export const CustomLayouts = {
     CUSTOM_ID_PREFIX: CUSTOM_ID_PREFIX,
     validateLayout: validateLayout,
     loadCustomLayouts: loadCustomLayouts,
@@ -507,3 +510,8 @@ window.CustomLayouts = {
     shiftedTokenOf: shiftedTokenOf,
     coverage: coverage
 };
+
+// Transition surface: the consumers still reach the library through globals.
+// Delete these three assignments (here, virtual-keyboard.js and layout-editor.js)
+// once every consumer imports instead.
+window.CustomLayouts = CustomLayouts;

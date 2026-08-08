@@ -4,14 +4,13 @@
 // reach beforeinput as U+2019, which matched no layout entry, so the character
 // bound as itself instead of translating.
 //
-// The test reads the layout JSON from disk and loads virtual-keyboard.js under a
-// window stub, so it constrains the shipped data and the shipped code rather
+// The test reads the layout JSON from disk and imports virtual-keyboard.js under
+// a window stub, so it constrains the shipped data and the shipped code rather
 // than a restatement of either.
 //
 // Usage: node tools/quote_substitution_test.mjs
 
 import fs from 'node:fs';
-import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -24,25 +23,21 @@ function check(name, fn) {
 }
 function assert(cond, msg) { if (!cond) throw new Error(msg || 'assertion failed'); }
 
-// virtual-keyboard.js is a plain script that assigns window.VirtualKeyboard and
-// touches navigator at load. Stub only what module scope reads before any call.
-function loadVirtualKeyboard() {
-  const file = path.join(ROOT, 'virtual-keyboard.js');
-  const sandbox = {
-    window: {},
-    document: { addEventListener() {}, querySelector: () => null,
-                querySelectorAll: () => [], getElementsByTagName: () => [] },
-    navigator: { platform: 'MacIntel', userAgent: 'node' },
-    localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
-    Intl,
-    console,
-  };
-  sandbox.globalThis = sandbox;
-  vm.createContext(sandbox);
-  new vm.Script(fs.readFileSync(file, 'utf8'), { filename: file }).runInContext(sandbox);
-  const api = sandbox.window.VirtualKeyboard;
-  assert(api && api._internal, 'virtual-keyboard.js did not publish window.VirtualKeyboard._internal');
-  return api;
+// The library is an ES module graph that touches window/document/navigator as it
+// executes. Stub only what module scope reads before any call, then import the
+// real modules so the test constrains the shipped code.
+async function loadVirtualKeyboard() {
+  globalThis.window = {};
+  globalThis.document = { addEventListener() {}, querySelector: () => null,
+                          querySelectorAll: () => [], getElementsByTagName: () => [] };
+  // Node defines navigator as a getter-only global, so plain assignment throws.
+  Object.defineProperty(globalThis, 'navigator', {
+    value: { platform: 'MacIntel', userAgent: 'node' }, configurable: true });
+  globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+  const { VirtualKeyboard } = await import('../virtual-keyboard.js');
+  assert(VirtualKeyboard && VirtualKeyboard._internal,
+         'virtual-keyboard.js did not export VirtualKeyboard._internal');
+  return VirtualKeyboard;
 }
 
 function layoutKeys(name) {
@@ -64,7 +59,7 @@ const SUBSTITUTED = {
 // which is why the legend was always right; emission had to reach them too.
 const QUOTE_BINDING_LAYOUTS = ['igc', 'imperial'];
 
-const { physicalKeyFor } = loadVirtualKeyboard()._internal;
+const { physicalKeyFor } = (await loadVirtualKeyboard())._internal;
 
 check('physicalKeyFor is exported for the emission path to use', () => {
   assert(typeof physicalKeyFor === 'function', 'physicalKeyFor missing from _internal');

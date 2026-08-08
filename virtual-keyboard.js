@@ -1,18 +1,20 @@
 // Virtual Keyboard Functionality
 
-// Version for cache busting
-let VIRTUAL_KEYBOARD_VERSION = '';
+import { CustomLayouts } from './custom-layouts.js';
+import { LayoutEditor } from './layout-editor.js';
+
+// Cache-busting value, read from this module's own URL query string (?v=...).
+const VIRTUAL_KEYBOARD_VERSION = new URL(import.meta.url).searchParams.get('v') || '';
 
 // Optional URL resolver callback for browser extensions
 let resourceUrlResolver = null;
 
 // Resolver for user-created custom layouts. dataFn(id) -> bareLayoutObject|null
 // for ids of the form "custom:<slug>"; nameFn(id) -> display name|null.
-// Defaults self-register against the library's own CustomLayouts store (ships in
-// custom-layouts.js, loaded right after this file), so a host needs no wiring.
-// Lazy window lookups, not captured refs: CustomLayouts loads AFTER this file.
-// A host (e.g. an extension) can replace either via setCustomLayoutResolver.
-let customLayoutResolver = (id) => window.CustomLayouts.getCustomLayoutData(id);
+// Defaults self-register against the library's own CustomLayouts store, so a
+// host needs no wiring. A host (e.g. an extension) can replace either via
+// setCustomLayoutResolver.
+let customLayoutResolver = (id) => CustomLayouts.getCustomLayoutData(id);
 let customDisplayNameResolver = (id) => customLayoutLabel(id);
 
 // Optional callback when keyboard state changes (visibility, position, layout)
@@ -378,9 +380,7 @@ function refreshUiStrings() {
         isEditorViewActive() ? 'vkEditorTitle' : 'vkDialogTitle', dialogTitle.textContent);
     const dialogBack = document.querySelector('#vk-dialog-back');
     if (dialogBack) dialogBack.textContent = vkString('vkDialogBack', dialogBack.textContent);
-    if (window.LayoutEditor && typeof window.LayoutEditor.refreshStrings === 'function') {
-        window.LayoutEditor.refreshStrings();
-    }
+    LayoutEditor.refreshStrings();
     // The docked keyboard title tracks the active script too — retitle in place
     // (no full relabel; that needs the layout map, reloaded elsewhere on switch).
     const kbTitle = document.querySelector('.keyboard-title');
@@ -430,7 +430,7 @@ function preferredScriptLabel(latin, shavian) {
 // no known custom. The single name-resolution point for every vk surface, so the
 // picker, the clone-base list and the docked title can't disagree.
 function customLayoutLabel(id) {
-    const CL = window.CustomLayouts;
+    const CL = CustomLayouts;
     const latin = CL.getCustomLayoutDisplayName(id);
     return latin === null
         ? null
@@ -497,33 +497,12 @@ function notifyStateChange() {
     }
 }
 
-// Detect the base path of this script and extract version parameter
-function getVirtualKeyboardBasePath() {
-    const scripts = document.getElementsByTagName('script');
-    for (let script of scripts) {
-        if (script.src && script.src.includes('virtual-keyboard.js')) {
-            const src = script.src;
-            const lastSlash = src.lastIndexOf('/');
-
-            // Extract version from query string if present
-            const versionMatch = src.match(/[?&]v=([^&]+)/);
-            if (versionMatch && !VIRTUAL_KEYBOARD_VERSION) {
-                VIRTUAL_KEYBOARD_VERSION = versionMatch[1];
-            }
-
-            return src.substring(0, lastSlash + 1);
-        }
-    }
-    return ''; // Fallback to current directory
-}
-
 // Get resource URL - uses custom resolver if provided (for browser extensions)
 function getResourceUrl(relativePath) {
     if (resourceUrlResolver) {
         return resourceUrlResolver(relativePath);
     }
-    const basePath = getVirtualKeyboardBasePath();
-    return versionedUrl(`${basePath}${relativePath}`);
+    return versionedUrl(new URL(relativePath, import.meta.url).href);
 }
 
 // Add version parameter to URL for cache busting
@@ -1122,7 +1101,7 @@ function updateKeyboardLabels(keyboardMap, layoutName, layout) {
 // The shift-layer physical token for an unshifted one, via CustomLayouts'
 // canonical map (so preview shift forms can't drift from the editor's/coverage's).
 function previewShiftedToken(token) {
-    return window.CustomLayouts.shiftedTokenOf(token);
+    return CustomLayouts.shiftedTokenOf(token);
 }
 
 // Stamp a cloned keyboard body's caps from a bare layout's `keys` map for one
@@ -1796,7 +1775,7 @@ function rescalePreview(containerElement) {
 function previewDescription(layoutId) {
     const desc = LAYOUT_DESCRIPTIONS[layoutId];
     if (desc !== undefined) return vkString(desc.key, desc.en);
-    const record = window.CustomLayouts.getCustomLayout(layoutId);
+    const record = CustomLayouts.getCustomLayout(layoutId);
     if (!record) return vkString('vkCustomUnavailable', 'Custom keyboard (unavailable).');
     return preferredScriptLabel(record.description || '', record.shavianDescription);
 }
@@ -1808,9 +1787,9 @@ function previewDescription(layoutId) {
 // glance, not a diagnostic.
 function renderCoverageBadge(descEl, layoutId) {
     if (LAYOUT_DESCRIPTIONS[layoutId] !== undefined) return;
-    const record = window.CustomLayouts.getCustomLayout(layoutId);
+    const record = CustomLayouts.getCustomLayout(layoutId);
     if (!record) return;
-    const complete = window.CustomLayouts.coverage(record.layout).missing.length === 0;
+    const complete = CustomLayouts.coverage(record.layout).missing.length === 0;
     const badge = document.createElement('span');
     if (complete) {
         badge.className = 'vk-cov-badge vk-cov-complete';
@@ -1966,7 +1945,7 @@ function editorEntryFor(containerElement) {
 // kinds are labelled in the active script.
 function listAllLayouts() {
     const builtIns = listBuiltInLayouts().map(l => ({ ...l, isCustom: false }));
-    const customs = window.CustomLayouts.listCustomLayouts().map(
+    const customs = CustomLayouts.listCustomLayouts().map(
         l => ({ id: l.id, displayName: customLayoutLabel(l.id), isCustom: true }));
     return builtIns.concat(customs);
 }
@@ -2200,7 +2179,7 @@ function builtInLatinName(layoutId) {
 function listCloneBases() {
     const bases = listBuiltInLayouts().map(l => ({ id: l.id, label: l.displayName }));
     const customTag = vkString('vkCustomChip', 'custom');
-    for (const c of window.CustomLayouts.listCustomLayouts()) {
+    for (const c of CustomLayouts.listCustomLayouts()) {
         bases.push({ id: c.id, label: `${customLayoutLabel(c.id)} (${customTag})` });
     }
     return bases;
@@ -2321,7 +2300,7 @@ function wireCreateControls(containerElement) {
 // that custom's own base (structural ancestry survives). A unique default name is
 // minted so the record is valid immediately; the user renames in the editor.
 async function rosterNewFromClone(baseId, containerElement) {
-    const CL = window.CustomLayouts;
+    const CL = CustomLayouts;
     let data;
     try {
         data = await getKeyboardLayout(baseId);
@@ -2361,7 +2340,7 @@ async function rosterNewFromClone(baseId, containerElement) {
 // is minted from the LATIN name — identity stays Latin. Top-level "keys" stays
 // where it is, so the file remains a drop-in for tools/kbd_score/score_layout.py.
 function rosterDownload(id) {
-    const CL = window.CustomLayouts;
+    const CL = CustomLayouts;
     const record = CL.getCustomLayout(id);
     if (!record) return;
     const exported = Object.assign(CL.layoutMetadata(record), record.layout);
@@ -2382,7 +2361,7 @@ function rosterDownload(id) {
 // same `id` is passed to all four — delete-of-active removes, evicts, and falls
 // back. All roster actions (edit/download/delete) use this shape.
 async function rosterDelete(id) {
-    const CL = window.CustomLayouts;
+    const CL = CustomLayouts;
     const record = CL.getCustomLayout(id);
     if (!record) return;
     if (!window.confirm(vkString('vkConfirmDelete', 'Delete custom keyboard "{{name}}"? This cannot be undone.', { name: record.displayName }))) {
@@ -2415,7 +2394,7 @@ function splitImportedLayout(parsed) {
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
         throw new Error('Layout must be a JSON object.');
     }
-    const CL = window.CustomLayouts;
+    const CL = CustomLayouts;
     const wrapped = !!parsed.layout && typeof parsed.layout === 'object';
     const bare = wrapped ? parsed.layout : Object.assign({}, parsed);
     // The metadata rides alongside `keys` in an exported file — strip it back off
@@ -2432,7 +2411,7 @@ function splitImportedLayout(parsed) {
 // Import a layout JSON as a new stored custom, then re-render via onLayoutsChanged.
 // splitImportedLayout resolves the bare layout + its name; validates before storing.
 function rosterImport(fileInput) {
-    const CL = window.CustomLayouts;
+    const CL = CustomLayouts;
     const file = fileInput.files && fileInput.files[0];
     fileInput.value = '';
     if (!file) return;
@@ -2480,7 +2459,7 @@ function openEditorView(id, onExit) {
     const picker = dialog.querySelector('#vk-view-picker');
     const editorHost = dialog.querySelector('#vk-view-editor');
     if (!picker || !editorHost) return;
-    window.LayoutEditor.open(id, {
+    LayoutEditor.open(id, {
         host: editorHost,
         onExit: onExit || (() => showPickerView()),
     }).then(() => {
@@ -2581,7 +2560,7 @@ async function openVirtualKeyboardSettings() {
         backBtn.id = 'vk-dialog-back';
         backBtn.textContent = vkString('vkDialogBack', '← Back');
         backBtn.style.cssText = 'border: none; background: none; font-size: 15px; cursor: pointer; color: #007bff; display: none;';
-        backBtn.addEventListener('click', () => window.LayoutEditor.back());
+        backBtn.addEventListener('click', () => LayoutEditor.back());
 
         const title = document.createElement('h2');
         title.id = 'vk-dialog-title';
@@ -2597,7 +2576,7 @@ async function openVirtualKeyboardSettings() {
         // redirect is the only guard for the ✕ path. In picker view ✕ just closes.
         closeBtn.addEventListener('click', () => {
             if (isEditorViewActive()) {
-                window.LayoutEditor.back();
+                LayoutEditor.back();
             } else {
                 dialog.close();
             }
@@ -2628,19 +2607,19 @@ async function openVirtualKeyboardSettings() {
         // Clean editor / picker view fall through to the normal close either way.
         const escapeShouldDirtyCheck = () =>
             isEditorViewActive()
-            && window.LayoutEditor.isDirty()
-            && !window.LayoutEditor.hasFocusTarget();
+            && LayoutEditor.isDirty()
+            && !LayoutEditor.hasFocusTarget();
         dialog.addEventListener('keydown', (ev) => {
             if (ev.key === 'Escape' && escapeShouldDirtyCheck()) {
                 ev.preventDefault();
                 ev.stopPropagation();
-                window.LayoutEditor.back();
+                LayoutEditor.back();
             }
         }, true);
         dialog.addEventListener('cancel', (ev) => {
             if (escapeShouldDirtyCheck()) {
                 ev.preventDefault();
-                window.LayoutEditor.back();
+                LayoutEditor.back();
             }
         });
 
@@ -2650,7 +2629,7 @@ async function openVirtualKeyboardSettings() {
         // reset to the picker view so the next open starts clean.
         // LayoutEditor.close() is a no-op-safe teardown when never opened.
         dialog.addEventListener('close', () => {
-            window.LayoutEditor.close();
+            LayoutEditor.close();
             const picker = dialog.querySelector('#vk-view-picker');
             const editorHost = dialog.querySelector('#vk-view-editor');
             if (editorHost) editorHost.style.display = 'none';
@@ -3075,8 +3054,12 @@ function destroyVirtualKeyboard() {
     console.log('[Virtual Keyboard] Destroyed');
 }
 
+// Named exports for the sibling modules. The supported host surface is the
+// VirtualKeyboard object below.
+export { getComponentToLigature, formLigatures, isBuiltInLayoutName };
+
 // New namespaced API - cleaner and more organized
-window.VirtualKeyboard = {
+export const VirtualKeyboard = {
     // Lifecycle
     init: initVirtualKeyboard,
     destroy: destroyVirtualKeyboard,
@@ -3203,4 +3186,9 @@ window.VirtualKeyboard = {
         deleteCustomLayout: rosterDelete
     }
 };
+
+// Transition surface: the consumers still reach the library through globals.
+// Delete these three assignments (here, custom-layouts.js and layout-editor.js)
+// once every consumer imports instead.
+window.VirtualKeyboard = VirtualKeyboard;
 
