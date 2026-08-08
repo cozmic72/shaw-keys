@@ -165,6 +165,67 @@ Consequences:
 
 ---
 
+## The module format excludes MV3 content scripts
+
+**We will accept that the library cannot be consumed by a Manifest V3 content script, and leave
+the remedy to whoever settles packaging** — PROPOSED (consequence of `880ef72`, found 2026-08-08 by
+surveying `shave`).
+
+A new entry rather than a bullet added to *The library is an ES module* above, because this is not
+a missed item on that entry's consequence list: it names a consumer class the library **cannot
+serve at all**, and carries options a reader needs to find by title. That entry stands unamended
+and correct; this one supplements it.
+
+An MV3 content script is a file a browser extension declares in `manifest.json` under
+`content_scripts[].js` and the browser injects into every matching page. The injection is the
+manifest entry — there is no `<script>` tag in the document to carry `type="module"`, and the array
+has no per-file equivalent of that attribute. Module syntax in such a file is therefore a parse
+error with nothing to swap. `shave/extensions/safari/manifest.json` injects `virtual-keyboard.js`
+exactly this way, in the `content_scripts` entry matching `<all_urls>`.
+
+The globals are not the problem. The module build still assigns all three —
+`window.VirtualKeyboard` in [`virtual-keyboard.js`](../virtual-keyboard.js),
+`window.CustomLayouts` in [`custom-layouts.js`](../custom-layouts.js), `window.LayoutEditor` in
+[`layout-editor.js`](../layout-editor.js) (verified at `56046d1`). A consumer that reads a global
+still finds it. What the format costs a **page** consumer is timing, because a module script
+executes after the classic scripts around it; what it costs a **content-script** consumer is the
+file itself, which never parses.
+
+Consequences:
+
+- **`shave`'s Safari web extension cannot consume the library**, and no edit to its script tags
+  fixes it, because it has none.
+- The dynamic-`import()` escape — inject a classic shim that imports the module — is not open as
+  the manifest stands. Its `web_accessible_resources` lists `*.html`, `*.json`, `*.png`, `*.otf`
+  and `*.ttf`; a `.js` file that is not itself a declared content script cannot be fetched by the
+  page without being listed there.
+- `shave`'s three GUI pages (`gui/index.html`, `gui/web.html`, `gui/ebook.html`) load the library
+  as three classic tags and call into it at parse time from a bare IIFE, so swapping their tags to
+  `type="module"` is not sufficient — their boot has to be deferred as well. That is `shave`'s work
+  and this entry does not prescribe it; it is recorded because the tag swap looks complete and is
+  not.
+- The library now has two consumer shapes it serves and one it does not, and nothing in the
+  repository states which is which. A future host discovers the exclusion at injection time.
+
+The options, so this is decided once rather than re-derived:
+
+- **Ship a classic build alongside the module** — a second artefact for extension consumers. Costs
+  the build step that [Versioning](#versioning) above exists to avoid.
+- **Open `web_accessible_resources` to `*.js` and load via dynamic `import()`** from a classic
+  shim. Keeps one artefact; moves the cost into the consumer's manifest and its injection timing.
+- **Drop MV3 content scripts as a supported consumer**, and say so in `README.md`.
+
+Not chosen here. The choice is the owner's, and the distribution question in
+[`meta/docs/vision-and-open-questions.md`](../../meta/docs/vision-and-open-questions.md) will
+subsume it — a decision to publish this library through a package registry changes what "a classic
+build" costs.
+
+⚠ **Known unknown.** `shave`'s iOS app moved off `file://` to a `shavian-app://` scheme handler
+(`e44c99af` in `shave`) for the module conversion's sake, and that commit states it is unbuilt and
+unverified. Whether the module format works for that consumer is untested, not established.
+
+---
+
 ## Storage
 
 **We will not put a storage adapter between the keyboard library and `localStorage`** — PROPOSED
