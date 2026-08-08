@@ -172,6 +172,24 @@ const NAME_CAP_GRAPHEMES = 20;
 // already owns a top-level `VS1`.
 const VS1_VARIATION_SELECTOR = '︀';
 
+// Typographic quotes an OS or editor substitutes for the ASCII key the user
+// actually pressed, mapped back to that key. Layouts bind the physical keys
+// ' and " (U+0027, U+0022); macOS "smart quotes" and equivalents rewrite a
+// keystroke to U+2018/U+2019/U+201C/U+201D before it reaches beforeinput, so a
+// lookup on the delivered character misses and the quote binds as itself —
+// which is why the apostrophe key rendered 𐑛 but typed '. Key legends are
+// stamped from the layout's own tokens and were never affected.
+const SUBSTITUTED_QUOTE_KEYS = {
+    '‘': "'",
+    '’': "'",
+    '“': '"',
+    '”': '"'
+};
+
+function physicalKeyFor(typedText) {
+    return SUBSTITUTED_QUOTE_KEYS[typedText] || typedText;
+}
+
 // Split text into GRAPHEMES, not codepoints, so a VS1 variant (base + U+FE00) or
 // an IME-composed cluster counts as ONE unit rather than being torn apart. The
 // library's one grapheme counter: the editor's key bindings and name inputs and
@@ -699,10 +717,11 @@ function translateInputEvent(e, browserInput, currentLayout, useVirtualKeyboard,
             // Check if the input data is a Latin character that needs translation
             const codePoint = eventData.codePointAt(0);
             const isShavian = codePoint >= 0x10450 && codePoint <= 0x1047F;
+            const physicalKey = physicalKeyFor(eventData);
 
-            if (!isShavian && keyboardMap[eventData]) {
+            if (!isShavian && keyboardMap[physicalKey]) {
                 // Input is Latin and has a mapping - translate it
-                const translatedChar = keyboardMap[eventData];
+                const translatedChar = keyboardMap[physicalKey];
                 if (debugFn) {
                     debugFn('⌨️  Translating: "' + eventData + '" → "' + translatedChar + '" [' +
                            eventData.split('').map(c => 'U+' + c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')).join(' ') +
@@ -2872,13 +2891,14 @@ function enableKeystrokeInterception(inputElement, options = {}) {
         const keyboardMap = layout.keys;
         const codePoint = e.data.codePointAt(0);
         const isShavian = codePoint >= 0x10450 && codePoint <= 0x1047F;
+        const physicalKey = physicalKeyFor(e.data);
 
-        if (!isShavian && keyboardMap[e.data]) {
+        if (!isShavian && keyboardMap[physicalKey]) {
             // Prevent the original character from being inserted
             e.preventDefault();
 
             // Insert the translated character
-            const translatedChar = keyboardMap[e.data];
+            const translatedChar = keyboardMap[physicalKey];
 
             if (isContentEditable) {
                 // contenteditable path: use the live Selection. Ligatures
@@ -3098,6 +3118,7 @@ window.VirtualKeyboard = {
         notifyLayoutsChanged: notifyLayoutsChanged,
         NAME_CAP_GRAPHEMES: NAME_CAP_GRAPHEMES,
         toGraphemes: toGraphemes,
+        physicalKeyFor: physicalKeyFor,
         cloneName: cloneName,
         builtInLatinName: builtInLatinName,
         // UI-string helpers for the sibling editor: vkString resolves a key in the

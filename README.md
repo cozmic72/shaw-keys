@@ -99,6 +99,12 @@ Serve every file in this repository from one directory. Then:
 asset path is the usual cause. Keystroke translation is gated on visibility:
 while the keyboard is hidden, typed Latin binds as itself.
 
+Translation looks up the physical key, not the character delivered. A layout
+binds the ASCII quote keys `'` and `"`; where an OS substitutes a typographic
+quote for one of them — macOS "smart quotes" sends U+2019 for `'` — the
+substitute folds back to its ASCII key first. Binding U+2018/U+2019/U+201C/U+201D
+in a layout is therefore never correct: they are not keys.
+
 ## API
 
 **The module boundary is a convention, not a mechanism.** These are plain
@@ -190,3 +196,14 @@ default position with no custom layouts.
 (`tools/generate_translations.py`) and has not been extracted here, so
 regenerating the tables currently requires a `shaw-type` checkout. Edit the CSV
 and the JSON together until it moves.
+
+There is no test runner and no dependencies. A test is a standalone Node script
+under `tools/`, run directly and reporting failure through its exit code:
+
+```sh
+node tools/quote_substitution_test.mjs
+```
+
+The wider suites that cover this code (`layout_editor_test.mjs` and its
+siblings) also still live in `shaw-type/tools/` and load the library from that
+checkout's copy, so they do not exercise this repository's working tree.
