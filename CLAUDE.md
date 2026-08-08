@@ -3,6 +3,10 @@
 **Read [`README.md`](README.md) first.** It is the authority on the architecture, the supported
 API surface, the asset-loading contract and how to run a test. This file does not summarise it.
 
+**Check [`docs/decisions.md`](docs/decisions.md) before re-deriving a settled answer** — why there
+is no version and no build step, why the module boundary is convention rather than mechanism, why
+storage is not behind an adapter.
+
 This repository is a **library, consumed as a git submodule** by `shaw-type` (at
 `src/virtual-keyboard`), and by `shave`. Two things follow, and neither is visible from inside this
 checkout:
