@@ -78,10 +78,11 @@ function shouldSuppressKeydown() {
 let destinationInputEl = null;
 
 function setDestination(el) {
-    // The tap path drives .value/selectionStart directly, so the destination
-    // must be a value-bearing control. Fail here rather than silently no-op later.
-    if (el !== null && !('value' in el && 'selectionStart' in el)) {
-        throw new Error('setDestination requires an <input> or <textarea>');
+    // Insertion drives either .value/selectionStart or the live Selection, so the
+    // destination must be one of those two kinds. Fail here rather than silently
+    // no-op later.
+    if (el !== null && !isEditableDestination(el)) {
+        throw new Error('setDestination requires an <input>, <textarea> or contenteditable element');
     }
     destinationInputEl = el;
 }
@@ -158,20 +159,17 @@ function getTapFoldTable() {
     return getComponentToLigature(KEYBOARD_MAPS[currentLayoutName]);
 }
 
-// Insert a tapped glyph at the caret, folding the run before the caret into its
-// compound — the keyboard emits the RESULT (𐑼), not the components (𐑩+𐑮), the
-// way an IME would. The synthetic input event still reports the raw glyph as
-// e.data: that is the keystroke the user made, and a host with its own input
+// A tap has no browser event behind it, so unlike an intercepted keystroke it
+// must strip `readonly` around the write itself. The caller's synthetic input
+// event still reports the RAW glyph as e.data even when insertion folded it into
+// a compound: that is the keystroke the user made, and a host with its own input
 // pipeline (the game) tracks components from it for backspace-splitting.
 function insertTappedGlyph(input, glyph) {
-    withEditableInput(input, () => {
-        const start = input.selectionStart || input.value.length;
-        const end = input.selectionEnd || input.value.length;
-        const before = input.value.substring(0, start) + glyph;
-        const folded = formLigatures(before, getTapFoldTable());
-        input.value = folded + input.value.substring(end);
-        setSelectionSafe(input, folded.length);
-    });
+    withEditableInput(input, () => insertGlyphAtCaret(input, glyph, true));
+}
+
+function deleteTappedGlyph(input) {
+    withEditableInput(input, () => deleteBackwardAtCaret(input));
 }
 
 // Auto-show keyboard when editable content has focus
@@ -1349,25 +1347,7 @@ function makeKeysClickable(keyboardMap) {
                 }
 
             } else if (keyValue === 'Backspace') {
-                // Delete character using helper
-                withEditableInput(typingInput, () => {
-                    const start = typingInput.selectionStart || typingInput.value.length;
-                    const end = typingInput.selectionEnd || typingInput.value.length;
-
-                    if (start !== end) {
-                        // Delete selection
-                        typingInput.value = typingInput.value.substring(0, start) +
-                                           typingInput.value.substring(end);
-                        setSelectionSafe(typingInput, start);
-                    } else if (start > 0) {
-                        // Delete one character before cursor
-                        const chars = Array.from(typingInput.value);
-                        typingInput.value = chars.slice(0, start - 1).join('') +
-                                           chars.slice(start).join('');
-                        setSelectionSafe(typingInput, start - 1);
-                    }
-                });
-
+                deleteTappedGlyph(typingInput);
                 dispatchInputEvent(typingInput, 'deleteContentBackward');
 
                 // Auto-release shift after backspace
@@ -1424,25 +1404,7 @@ function makeKeysClickable(keyboardMap) {
                 }
 
             } else if (keyValue === 'Backspace') {
-                // Delete character using helper
-                withEditableInput(typingInput, () => {
-                    const start = typingInput.selectionStart || typingInput.value.length;
-                    const end = typingInput.selectionEnd || typingInput.value.length;
-
-                    if (start !== end) {
-                        // Delete selection
-                        typingInput.value = typingInput.value.substring(0, start) +
-                                           typingInput.value.substring(end);
-                        setSelectionSafe(typingInput, start);
-                    } else if (start > 0) {
-                        // Delete one character before cursor
-                        const chars = Array.from(typingInput.value);
-                        typingInput.value = chars.slice(0, start - 1).join('') +
-                                           chars.slice(start).join('');
-                        setSelectionSafe(typingInput, start - 1);
-                    }
-                });
-
+                deleteTappedGlyph(typingInput);
                 dispatchInputEvent(typingInput, 'deleteContentBackward');
 
                 // Auto-release shift after backspace
@@ -2870,6 +2832,109 @@ function formLigaturesInContentEditable(host, componentToLigature) {
     sel.addRange(newRange);
 }
 
+// Backspace for a contenteditable host. execCommand keeps undo and cursor
+// placement; the fallback mirrors it over the live Selection, deleting one
+// GRAPHEME so a Shavian VS1 variant (base + U+FE00) goes in one press.
+function deleteBackwardInContentEditable() {
+    if (document.execCommand) {
+        document.execCommand('delete', false, null);
+        return;
+    }
+    const sel = window.getSelection && window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    if (!range.collapsed) {
+        range.deleteContents();
+    } else {
+        const node = range.startContainer;
+        if (!node || node.nodeType !== Node.TEXT_NODE || range.startOffset === 0) return;
+        const before = node.data.substring(0, range.startOffset);
+        const lastGrapheme = toGraphemes(before).pop();
+        range.setStart(node, range.startOffset - lastGrapheme.length);
+        range.deleteContents();
+    }
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+}
+
+// <input>/<textarea> expose .value + setSelectionRange; contenteditable elements
+// don't — their insertion is driven by the active Selection and Range. The one
+// spelling of that distinction, for both input routes.
+function isContentEditableElement(el) {
+    return el.isContentEditable === true
+        || (typeof el.getAttribute === 'function' && el.getAttribute('contenteditable') === 'true');
+}
+
+function isValueBearingElement(el) {
+    return 'value' in el && 'selectionStart' in el;
+}
+
+function isEditableDestination(el) {
+    return isValueBearingElement(el) || isContentEditableElement(el);
+}
+
+// Where the next write goes in a value-bearing element. A physical keystroke
+// arrives via beforeinput on the FOCUSED element, so selectionStart 0 means the
+// caret really is at the start. A tap focuses nothing, so an untouched field
+// reports 0 whatever the caret was — hence untrustedCaret, which reads 0 as
+// end-of-value and makes tapping append rather than prepend.
+function caretRange(element, untrustedCaret) {
+    if (untrustedCaret) {
+        return {
+            start: element.selectionStart || element.value.length,
+            end: element.selectionEnd || element.value.length
+        };
+    }
+    return { start: element.selectionStart, end: element.selectionEnd };
+}
+
+// Insert `glyph` at the caret of either kind of editable element, folding the run
+// before the caret into its compound — the keyboard emits the RESULT (𐑼), not the
+// components (𐑩+𐑮), the way an IME would. The single insertion routine: tapped
+// keys and intercepted keystrokes both land here, so the two routes cannot drift.
+function insertGlyphAtCaret(element, glyph, untrustedCaret = false) {
+    if (isContentEditableElement(element)) {
+        if (document.execCommand) {
+            document.execCommand('insertText', false, glyph);
+        } else {
+            insertTextAtCaret(glyph);
+        }
+        formLigaturesInContentEditable(element, getTapFoldTable());
+        return;
+    }
+    if (!isValueBearingElement(element)) {
+        throw new Error('Cannot insert into element: not an <input>, <textarea> or contenteditable');
+    }
+    const { start, end } = caretRange(element, untrustedCaret);
+    const before = element.value.substring(0, start) + glyph;
+    const folded = formLigatures(before, getTapFoldTable());
+    element.value = folded + element.value.substring(end);
+    setSelectionSafe(element, folded.length);
+}
+
+// Delete backwards from the caret of either kind of editable element. Only the
+// tap path calls this — a physical Backspace on a keyboard-enabled field is left
+// to the browser — so the caret is always the untrusted kind.
+function deleteBackwardAtCaret(element) {
+    if (isContentEditableElement(element)) {
+        deleteBackwardInContentEditable();
+        return;
+    }
+    if (!isValueBearingElement(element)) {
+        throw new Error('Cannot delete from element: not an <input>, <textarea> or contenteditable');
+    }
+    const { start, end } = caretRange(element, true);
+    if (start !== end) {
+        element.value = element.value.substring(0, start) + element.value.substring(end);
+        setSelectionSafe(element, start);
+    } else if (start > 0) {
+        const chars = Array.from(element.value);
+        element.value = chars.slice(0, start - 1).join('') + chars.slice(start).join('');
+        setSelectionSafe(element, start - 1);
+    }
+}
+
 // Make `inputElement` keyboard-enabled: latin keystrokes translate to glyphs
 // (folding ligatures as they complete), AND tapped on-screen keys insert here
 // while it holds focus. One call covers both input routes. Host contract:
@@ -2893,12 +2958,6 @@ function enableKeystrokeInterception(inputElement, options = {}) {
     }
 
     let currentLayout = options.layout || getVirtualKeyboardLayout();
-
-    // <input>/<textarea> expose .value + setSelectionRange. contenteditable
-    // elements don't — their insertion is driven by the active Selection
-    // and Range. Detect once at attach time; the handler branches on it.
-    const isContentEditable = inputElement.isContentEditable === true
-        || inputElement.getAttribute && inputElement.getAttribute('contenteditable') === 'true';
 
     const beforeInputHandler = (e) => {
         // The visible keyboard IS the latin->glyph map the user reads off, so
@@ -2936,41 +2995,7 @@ function enableKeystrokeInterception(inputElement, options = {}) {
 
             const translatedChar = boundGlyph || physicalKey;
 
-            if (isContentEditable) {
-                // contenteditable path: use the live Selection. Ligatures
-                // need the prefix already in the DOM to fire, so insert
-                // first via execCommand (handles undo + cursor placement
-                // for free) and then run the ligature pass over the run
-                // we just wrote.
-                if (document.execCommand) {
-                    document.execCommand('insertText', false, translatedChar);
-                } else {
-                    insertTextAtCaret(translatedChar);
-                }
-                // Forming is a no-op when the layout defines no ligatures.
-                formLigaturesInContentEditable(inputElement, getTapFoldTable());
-                dispatchInputEvent(inputElement, 'insertText', translatedChar);
-                return;
-            }
-
-            const selectionStart = inputElement.selectionStart;
-            const selectionEnd = inputElement.selectionEnd;
-            const before = inputElement.value.substring(0, selectionStart);
-            const after = inputElement.value.substring(selectionEnd);
-
-            let newValue = before + translatedChar + after;
-            let cursorPos = before.length + translatedChar.length;
-
-            // Forming is a no-op when the layout defines no ligatures.
-            const beforeWithChar = before + translatedChar;
-            const formedBefore = formLigatures(beforeWithChar, getTapFoldTable());
-            if (formedBefore !== beforeWithChar) {
-                newValue = formedBefore + after;
-                cursorPos = formedBefore.length;
-            }
-
-            inputElement.value = newValue;
-            inputElement.setSelectionRange(cursorPos, cursorPos);
+            insertGlyphAtCaret(inputElement, translatedChar);
             dispatchInputEvent(inputElement, 'insertText', translatedChar);
         }
     };

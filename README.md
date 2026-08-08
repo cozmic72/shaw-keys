@@ -204,6 +204,10 @@ layout's identity and drives the slug and the download filename.
 Insertion goes in at the caret and replaces the selection, folds ligatures the
 way a physical keystroke would, and dispatches an `input` event, so a host's own
 validation and reactive state see tapped input exactly as they see typed input.
+A destination may be an `<input>`, a `<textarea>` or a contenteditable element;
+both routes share one insertion routine, so taps and keystrokes agree on all
+three. Anything else is rejected by `setDestination` rather than silently
+swallowing every tap.
 
 Release matters: the teardown function returned by `enableInterception` also
 withdraws the element as a destination. A host that removes a field without
