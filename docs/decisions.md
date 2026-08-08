@@ -60,6 +60,12 @@ restated, and the authority if the two disagree.
 
 ## Module boundary
 
+> **SUPERSEDED** by *The library is an ES module* below. The entry as written describes the
+> library before `880ef72`, and its central claim — that the files are plain scripts sharing one
+> global scope — is no longer true. It is kept because the reasoning that led here explains what
+> the module conversion had to solve, and because the two hazards it names, the bidirectional
+> coupling and the `SHAVIAN_PALETTE` guard, outlived it.
+
 **We will curate the public surface on `window.VirtualKeyboard` while leaving the global scope
 uncontrolled** — PROPOSED (built; `window.VirtualKeyboard` in
 [`virtual-keyboard.js`](../virtual-keyboard.js), `window.CustomLayouts` in
@@ -109,7 +115,39 @@ guard.
 
 Considered and rejected: ES modules with real `export` (would impose a bundler or `type="module"` on
 every host, against the no-build-step decision above; a separate agent is assessing this and may
-supersede the entry).
+supersede the entry). **That assessment ran and reversed this — see below.**
+
+---
+
+## The library is an ES module
+
+**We will use `import`/`export` between the three files, and hosts load one module script** —
+PROPOSED (built in `880ef72`).
+
+The rejection above rested on a cost nobody had counted. Counted, it was six small edits: no
+consumer touches the library's globals at parse time, and module scripts execute before
+`DOMContentLoaded`, so every existing call site still finds what it expects. It also needs no
+bundler, so the no-build-step decision stands rather than being traded away.
+
+What it bought is more than one fewer script tag. `import.meta.url` replaces a scan of
+`document.scripts` for a `src` containing `virtual-keyboard.js` — correct by construction rather
+than by convention, and immune to being confused by an injected tag. The bidirectional coupling
+recorded above stops needing an ordering, because the browser resolves the cycle. And a race that
+could not be worked around any other way is gone: `init` reaches `window.CustomLayouts` through
+`customLayoutResolver`, so a user whose saved layout was a custom one could hit it before a
+dynamically-loaded sibling had arrived — intermittently, and only for those users.
+
+Consequences:
+
+- **`file://` no longer works.** Modules are blocked over it by CORS. This is not theoretical: the
+  iOS Safari app loaded its page with `loadFileURL` and had to move to a custom scheme handler.
+  Any future host must serve over a real origin.
+- The compatibility globals are kept, so the four web consumers work unchanged until their HTML is
+  edited. They are a transition surface with a stated end, not part of the contract.
+- Module scope stops leaking the incidental top-level declarations the superseded entry described.
+  A host reaching one of those breaks now rather than later.
+- The tests import the real module instead of building a `vm` sandbox, so they exercise the graph
+  a browser would.
 
 ---
 
