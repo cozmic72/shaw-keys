@@ -106,11 +106,16 @@ to one.
 asset path is the usual cause. Keystroke translation is gated on visibility:
 while the keyboard is hidden, typed Latin binds as itself.
 
-Translation looks up the physical key, not the character delivered. A layout
-binds the ASCII quote keys `'` and `"`; where an OS substitutes a typographic
-quote for one of them — macOS "smart quotes" sends U+2019 for `'` — the
-substitute folds back to its ASCII key first. Binding U+2018/U+2019/U+201C/U+201D
-in a layout is therefore never correct: they are not keys.
+Translation looks up the physical key, not the character delivered. Where an OS
+substitutes a typographic quote for one of the ASCII quote keys `'` and `"` —
+macOS "smart quotes" sends U+2019 for `'` — the substitute folds back to its
+ASCII key first. Binding U+2018/U+2019/U+201C/U+201D in a layout is therefore
+never correct: they are not keys.
+
+A key the layout does not bind inserts itself, which is how punctuation a
+Shavian layout does not remap reaches the document. What inserts is the key
+**pressed**, so a layout with no `'` binding still yields U+0027 rather than the
+U+2019 the OS delivered.
 
 ## API
 
@@ -240,6 +245,8 @@ under `tools/`, run directly and reporting failure through its exit code:
 
 ```sh
 node tools/quote_substitution_test.mjs
+node tools/unbound_quote_test.mjs
+node tools/destination_routing_test.mjs
 ```
 
 The wider suites that cover this code (`layout_editor_test.mjs` and its

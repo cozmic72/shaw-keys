@@ -2923,12 +2923,18 @@ function enableKeystrokeInterception(inputElement, options = {}) {
         const isShavian = codePoint >= 0x10450 && codePoint <= 0x1047F;
         const physicalKey = physicalKeyFor(e.data);
 
-        if (!isShavian && keyboardMap[physicalKey]) {
-            // Prevent the original character from being inserted
+        // An unbound key must still insert itself — that is how punctuation a
+        // Shavian layout does not remap reaches the document — but what inserts
+        // has to be the key PRESSED. Leaving it to the browser inserts what the
+        // OS delivered, which for a substituted quote is U+2019 from a press of
+        // '. Only a folded key can differ, so only it is written here.
+        const boundGlyph = keyboardMap[physicalKey];
+        const insertsItsOwnKey = !boundGlyph && physicalKey !== e.data;
+
+        if (!isShavian && (boundGlyph || insertsItsOwnKey)) {
             e.preventDefault();
 
-            // Insert the translated character
-            const translatedChar = keyboardMap[physicalKey];
+            const translatedChar = boundGlyph || physicalKey;
 
             if (isContentEditable) {
                 // contenteditable path: use the live Selection. Ligatures
