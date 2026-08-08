@@ -64,7 +64,10 @@ restated, and the authority if the two disagree.
 > library before `880ef72`, and its central claim — that the files are plain scripts sharing one
 > global scope — is no longer true. It is kept because the reasoning that led here explains what
 > the module conversion had to solve, and because the two hazards it names, the bidirectional
-> coupling and the `SHAVIAN_PALETTE` guard, outlived it.
+> coupling, is what the conversion had to solve. The `SHAVIAN_PALETTE` guard did **not** outlive
+> it: `custom-layouts.js` now imports the palette directly, so the empty-target-set condition that
+> made coverage report full is unreachable — a module that loaded at all has already resolved the
+> one it imports from. The hazard as described below is history, not a standing warning.
 
 **We will curate the public surface on `window.VirtualKeyboard` while leaving the global scope
 uncontrolled** — PROPOSED (built; `window.VirtualKeyboard` in
@@ -146,6 +149,17 @@ Consequences:
   edited. They are a transition surface with a stated end, not part of the contract.
 - Module scope stops leaking the incidental top-level declarations the superseded entry described.
   A host reaching one of those breaks now rather than later.
+- **A wrong answer became unreachable rather than merely unlikely.** `custom-layouts.js` reached
+  `window.LayoutEditor.SHAVIAN_PALETTE` behind a fallback, and with no editor loaded the target set
+  came back empty, so VS1 coverage reported *full* instead of none. The import replaces the
+  fallback, and module resolution means a file that loaded at all has already resolved what it
+  imports. No test pins this: the failure needs a module graph a browser cannot produce, so a test
+  would pin the stub rather than the code.
+- **A host loading the library as classic scripts now fails to parse.** Top-level `import` is a
+  syntax error outside a module, so a consumer that has not added `type="module"` gets nothing
+  rather than a partial library. That is the intended failure — loud, immediate, and naming the
+  cause — but it means each consumer breaks at the moment it next loads, not when someone
+  remembers to migrate it.
 - The tests import the real module instead of building a `vm` sandbox, so they exercise the graph
   a browser would.
 
