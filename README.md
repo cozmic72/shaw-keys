@@ -90,7 +90,7 @@ Serve every file in this repository from one directory. Then:
         dialect: 'british'
     });
 
-    VK.enableKeystrokeInterception(document.getElementById('practiceInput'));
+    VK.enableInterception(document.getElementById('practiceInput'));
     VK.show();
 </script>
 ```
@@ -141,14 +141,43 @@ authority on its arguments. Grouped by purpose, the entry points are:
 | UI strings | `setScript`, `setUiStrings` |
 | State | `onStateChange`, `getState`, `setSuppressKeydownPredicate` |
 | Input routing | `setDestination`, `getDestinationInput`, `setFoldLigatures` |
-| Keystrokes | `enableKeystrokeInterception` |
+| Keystrokes | `enableInterception` |
 | Ligatures | `setLigaturePreviewActive`, `refreshLigaturePreview`, `getComponentToLigature`, `formLigatures` |
 
-Two of these are easy to reach for and wrong. `enableKeystrokeInterception` is
+Two of these are easy to reach for and wrong. `enableInterception` is
 for hosts *without* their own input pipeline; a host that owns one drives
 translation itself and feeds `refreshLigaturePreview`. `setSuppressKeydownPredicate`
 exists so a host showing its own modal can stop the library consuming global
 keydowns — without it, the keyboard competes with the modal for the keyboard.
+
+### Where tapped keys insert
+
+`enableInterception(el)` is the opt-in for both input routes: it translates
+physical keystrokes in `el`, **and** makes `el` receive taps on the on-screen
+keys while it holds focus. Hosts that already call it for typing get tap routing
+without a further call.
+
+Taps follow focus across every element a host has enabled, so a page wires up
+each editable field once and the keyboard tracks the caret from there. Opting in
+is per element and deliberate: a field left unregistered never receives taps,
+which is how a form mixes Shavian fields with ones that must stay Latin. The
+editor dialog does exactly that — its description and Shavian name/description
+fields are enabled, while the Latin name is not, because that field is the
+layout's identity and drives the slug and the download filename.
+
+Insertion goes in at the caret and replaces the selection, folds ligatures the
+way a physical keystroke would, and dispatches an `input` event, so a host's own
+validation and reactive state see tapped input exactly as they see typed input.
+
+Release matters: the teardown function returned by `enableInterception` also
+withdraws the element as a destination. A host that removes a field without
+calling it is covered — a detached element is skipped — but a dialog that may
+reopen should release on close.
+
+Precedence is override, then focus, then `#typingInput`. `setDestination` pins
+taps to one field regardless of focus and is the exception, not the normal path;
+`#typingInput` is a legacy default predating this mechanism, retained so
+shaw-type keeps working, and new hosts should not rely on it.
 
 ### Built-in layouts
 

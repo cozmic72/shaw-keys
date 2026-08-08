@@ -67,9 +67,12 @@ function shouldSuppressKeydown() {
     return typeof suppressKeydownPredicate === 'function' && suppressKeydownPredicate();
 }
 
-// Where tapped keys insert. Default: the game's practice input. The layout
-// editor repoints it at its glyph-capture input so the on-screen keyboard acts
-// as a glyph picker, then resets to null (default) on close.
+// Where tapped keys insert, in precedence order:
+//   1. An explicit setDestination() override, for a host that must pin taps to
+//      one field regardless of focus.
+//   2. The keyboard-enabled element that most recently held focus, so tapped keys
+//      follow the caret the way a physical keyboard does.
+//   3. #typingInput, the practice input shaw-type has always relied on.
 let destinationInputEl = null;
 
 function setDestination(el) {
@@ -81,8 +84,55 @@ function setDestination(el) {
     destinationInputEl = el;
 }
 
+// Elements that opted in, and the last one focused. Registration is what
+// enableInterception already performs for physical typing; tracking focus over
+// that set is what lets tapped keys reach the same fields with no further call.
+// A WeakSet so a removed element (the editor rebuilds its dialog) is collectable.
+const keyboardEnabledEls = new WeakSet();
+let focusedEnabledEl = null;
+let destinationFocusListenerAttached = false;
+
+// Taps land in whatever the host declared keyboard-enabled and the user focused.
+// Bound once, lazily: a host that never registers anything keeps the old
+// #typingInput behaviour and pays for no listener.
+function trackDestinationFocus() {
+    if (destinationFocusListenerAttached) return;
+    document.addEventListener('focusin', (e) => {
+        if (keyboardEnabledEls.has(e.target)) {
+            focusedEnabledEl = e.target;
+        }
+    });
+    destinationFocusListenerAttached = true;
+}
+
+// Registered elements are tap destinations from the moment they are registered,
+// including one already focused when the host wired it up (hosts attach on
+// focusin, so the field that triggered it is focused before this runs).
+function registerKeyboardEnabled(el) {
+    keyboardEnabledEls.add(el);
+    trackDestinationFocus();
+    if (document.activeElement === el) {
+        focusedEnabledEl = el;
+    }
+}
+
+function unregisterKeyboardEnabled(el) {
+    keyboardEnabledEls.delete(el);
+    if (focusedEnabledEl === el) {
+        focusedEnabledEl = null;
+    }
+}
+
+// A destination must still be in the document: hosts tear dialogs down without
+// unregistering, and inserting into a detached node writes into nothing.
 function getDestinationInput() {
-    return destinationInputEl || document.getElementById('typingInput');
+    if (destinationInputEl) {
+        return destinationInputEl;
+    }
+    if (focusedEnabledEl && document.contains(focusedEnabledEl)) {
+        return focusedEnabledEl;
+    }
+    return document.getElementById('typingInput');
 }
 
 // The ligature table tapped keys fold against. Default: the ACTIVE layout's, so
@@ -2841,8 +2891,9 @@ function formLigaturesInContentEditable(host, componentToLigature) {
     sel.addRange(newRange);
 }
 
-// Translate latin keystrokes to glyphs in `inputElement`, folding ligatures as
-// they complete. Host contract:
+// Make `inputElement` keyboard-enabled: latin keystrokes translate to glyphs
+// (folding ligatures as they complete), AND tapped on-screen keys insert here
+// while it holds focus. One call covers both input routes. Host contract:
 //   - Translation is gated on keyboard visibility: show()/hide()/toggle() arm and
 //     disarm it (isVisible() reports the same state). A host needs no visibility
 //     check of its own.
@@ -2950,9 +3001,12 @@ function enableKeystrokeInterception(inputElement, options = {}) {
 
     inputElement._vkLayoutChangeHandler = layoutChangeHandler;
 
+    registerKeyboardEnabled(inputElement);
+
     return () => {
         inputElement.removeEventListener('beforeinput', beforeInputHandler);
         delete inputElement._vkLayoutChangeHandler;
+        unregisterKeyboardEnabled(inputElement);
     };
 }
 

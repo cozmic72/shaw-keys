@@ -200,9 +200,9 @@ function getLayoutData(id) {
 // vk preference). Shown on open and toggled by Cmd/Ctrl+K thereafter; it doubles
 // as a live preview of the layout under edit, which the popup palette is not.
 //
-// GAME SAFETY: setupPicker repoints the vk's destination at the editor input;
-// teardownPicker MUST reset it (setDestination(null)) on EVERY close path so the
-// game's vk is never left inserting into the editor. teardownPicker is called
+// GAME SAFETY: setupPicker keyboard-enables the editor's own inputs;
+// teardownPicker MUST release them on EVERY close path so the game's vk is never
+// left inserting into a dialog that has gone away. teardownPicker is called
 // unconditionally by close().
 // ---------------------------------------------------------------------------
 // Where #virtualKeyboard normally lives, so teardownPicker can put it back. A
@@ -214,6 +214,9 @@ let pickerVkHomeNext = null;
 
 // Detaches the library's keystroke interception from #leGlyphInput.
 let stopInterception = null;
+
+// Detaches it from the keyboard-enabled metadata fields (one per field).
+let stopMetadataInterception = [];
 
 function promoteVkAboveBackdrop() {
     const vk = document.getElementById('virtualKeyboard');
@@ -246,11 +249,16 @@ function pickerFoldLigatures() {
 
 function setupPicker() {
     const vk = window.VirtualKeyboard;
-    vk.setDestination(byId('leGlyphInput'));
     vk.setFoldLigatures(pickerFoldLigatures);
-    // Physical typing gets latin->glyph translation and folding from the library,
-    // against that same table — so typed and tapped components fold alike.
+    // Keyboard-enable the glyph input: physical typing gets latin->glyph
+    // translation and folding against that same table (so typed and tapped
+    // components fold alike), and tapped keys reach it while it holds focus.
+    // Registration, not a pinned destination — the metadata fields below are
+    // keyboard-enabled too, and taps must follow whichever the user is in.
     stopInterception = vk.enableInterception(byId('leGlyphInput'));
+    stopMetadataInterception = KEYBOARD_ENABLED_METADATA_INPUTS.map(
+        (id) => vk.enableInterception(byId(id))
+    );
     document.body.classList.add('le-picker-open');
     promoteVkAboveBackdrop();
 }
@@ -261,7 +269,8 @@ function teardownPicker() {
         stopInterception();
         stopInterception = null;
     }
-    vk.setDestination(null);            // game safety: never leave it on the editor input
+    stopMetadataInterception.forEach((stop) => stop());
+    stopMetadataInterception = [];
     vk.setFoldLigatures(null);          // game safety: back to the active layout's ligatures
     restoreVkHome();
     document.body.classList.remove('le-picker-open');
@@ -551,6 +560,16 @@ const METADATA_INPUT_HANDLERS = {
     layoutEditorShavianName: onNameInput,
     layoutEditorShavianDescription: markDirty,
 };
+
+// Metadata fields the on-screen keyboard types into (the editor dogfooding the
+// library's own opt-in). layoutEditorName is the deliberate exception: the Latin
+// name is the layout's identity — it drives the slug and the download filename —
+// so it stays on the OS keyboard whatever script the rest of the dialog accepts.
+const KEYBOARD_ENABLED_METADATA_INPUTS = [
+    'layoutEditorDescription',
+    'layoutEditorShavianName',
+    'layoutEditorShavianDescription',
+];
 
 // Read the authored metadata out of the inputs, trimmed. Every field is
 // legitimately empty, so none is validated here — save() validates the Latin
