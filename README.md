@@ -40,10 +40,26 @@ working keyboard from `init` alone. The `setCustomLayoutResolver` and
 `setResourceUrlResolver` hooks exist for browser extensions, where assets do not
 live at a path derived from the library's own URL.
 
-The `@font-face` rule in `virtual-keyboard.css` fetches Inter Alia from
-`https://joro.io/fonts/InterAlia-VF.otf`. No font file ships here. Without it the
-keyboard still functions, but Shavian letters carrying a variation selector (VS1)
-render as their bare base letter, because no system font draws those variants.
+### Fonts and staging
+
+No font file ships here. The `@font-face` rule in `virtual-keyboard.css` carries a
+`{{FONT_URL}}` token that `tools/stage.sh` resolves while copying the library into
+a consumer's docroot:
+
+```sh
+virtual-keyboard/tools/stage.sh --font-url /fonts path/to/docroot/virtual-keyboard
+```
+
+`--font-url` names the directory serving `InterAlia-VF.otf`. It is mandatory and
+has no default: the right value is a property of the consumer's docroot, and a
+wrong guess renders in a fallback face without failing. Staging then verifies that
+no token survived, so a missed substitution stops the build rather than shipping
+CSS the browser silently discards.
+
+Copying the files without staging leaves the token unresolved, and no Shavian font
+loads. Without the font the keyboard still works, but letters carrying a variation
+selector (VS1) render as their bare base letter, because no system font draws
+those variants.
 
 ### Cache busting, and why there is no version
 
@@ -75,8 +91,14 @@ Omit it during development and assets are fetched unversioned.
 
 ## Getting started
 
-Serve every file in this repository from one directory, over `http(s)://` — not
-`file://`. Then:
+Stage the library into one directory served over `http(s)://` — not `file://` —
+passing the URL under which that host serves `InterAlia-VF.otf`:
+
+```sh
+virtual-keyboard/tools/stage.sh --font-url /fonts public/virtual-keyboard
+```
+
+Then:
 
 ```html
 <link rel="stylesheet" href="virtual-keyboard/virtual-keyboard.css">

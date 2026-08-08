@@ -25,12 +25,13 @@ SOFTWARE.
 ## Inter Alia
 
 This repository distributes no font files. `virtual-keyboard.css` declares an
-`@font-face` rule fetching Inter Alia from `https://joro.io/fonts/InterAlia-VF.otf`
-at runtime, so the typeface is a dependency rather than a bundled component and
-this licence does not cover it.
+`@font-face` rule whose URL the consumer supplies when staging the library, so
+the typeface is a dependency rather than a bundled component and this licence
+does not cover it.
 
 Inter Alia — https://github.com/Cozmic72/Inter-Alia — is Copyright (c) 2020-2022
 Cozmic72, licensed under the SIL Open Font License, Version 1.1
-(https://openfontlicense.org). A consumer who self-hosts the file rather than
-fetching it from `joro.io` redistributes the font software and takes on the OFL's
-conditions, which include not selling the font by itself and not relicensing it.
+(https://openfontlicense.org). A consumer who serves the file itself — which is
+what pointing the staging step at its own copy means — redistributes the font
+software and takes on the OFL's conditions, which include not selling the font by
+itself and not relicensing it.

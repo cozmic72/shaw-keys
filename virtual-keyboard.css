@@ -1,7 +1,10 @@
-/* Load Inter-Alia Variable Font */
+/* The font URL below is a token substituted by the consumer's staging step
+   (tools/stage.sh; see README, "Fonts and staging"). Left unsubstituted it is
+   not a working URL, and staging fails rather than ship it — a font that
+   silently renders in a fallback face is what this token makes loud. */
 @font-face {
     font-family: 'Inter-Alia';
-    src: url('https://joro.io/fonts/InterAlia-VF.otf') format('opentype');
+    src: url('{{FONT_URL}}/InterAlia-VF.otf') format('opentype');
     font-weight: 100 900;
 }
 

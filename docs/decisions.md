@@ -58,6 +58,54 @@ restated, and the authority if the two disagree.
 
 ---
 
+## The consumer supplies the font URL when staging
+
+**PROPOSED** (built; `{{FONT_URL}}` in [`virtual-keyboard.css`](../virtual-keyboard.css),
+[`tools/stage.sh`](../tools/stage.sh)).
+
+`virtual-keyboard.css` hardcoded `https://joro.io/fonts/InterAlia-VF.otf`, so every host fetched
+that origin even when it already served the same file — `shave` ships `InterAlia-VF.otf` and
+fetched a remote copy of it anyway. The family's other repositories take the font URL per
+invocation (`shaw-type`'s `--font-url`, `shaw-spell`'s `FONT_URL`), and every consumer of this
+library already copies its files into a docroot rather than serving them from here.
+
+Chosen option: the CSS carries a `{{FONT_URL}}` token and `tools/stage.sh` substitutes it during
+the copy consumers already perform, because it makes this library take its font URL the same way
+the rest of the family does, and the substitution point already existed on the consumer side —
+`shaw-type/tools/deploy.py` had been substituting a font token into this stylesheet for as long as
+the token has been missing from it.
+
+This does **not** reverse [Versioning](#versioning)'s no-build-step consequence. Nothing is
+generated here, no artefact is produced, and no step runs before this repository's files are usable
+as plain files. `stage.sh` is a copy that a consumer runs, in place of the `cp -R` each already
+ran.
+
+Consequences:
+
+- A consumer that copies the files without staging gets a literal `{{FONT_URL}}` and no Shavian
+  font. That is deliberate: `--font-url` is mandatory and staging fails when a token survives, so
+  the failure lands on whoever ran the copy instead of on a reader seeing a fallback face.
+- The drop-in flow now has a prerequisite. `README.md`'s Getting Started leads with `stage.sh`, and
+  a host that ignores it no longer gets a working font by default — the previous behaviour, a
+  silent remote fetch, is gone.
+- Hosts must declare the family as `Inter-Alia`. Pointing the token at a local copy is inert if the
+  host's own `@font-face` spells the family differently, which is why `shave`'s `InterAlia` was
+  renamed alongside this.
+- The OFL position is unchanged in substance but restated: no font file ships here, and a consumer
+  pointing the token at its own copy is the one redistributing. See [`LICENSE.md`](../LICENSE.md).
+
+Considered and rejected: a CSS custom property with a remote fallback
+(`url(var(--vk-font-url, …))`) — **tested in Chromium 141 and WebKit 26.0 and it does not work in
+either**; the `@font-face` is dropped and the text renders in the fallback face, and
+`document.fonts.check()` still reports `true`, so nothing detects it. A separately linkable
+`virtual-keyboard-font.css` — no logic, but it keeps a hardcoded production URL in this repository
+and a host that forgets the second `<link>` fails silently. Resolving the font through
+`setResourceUrlResolver` — the resolver runs at `init`, long after the browser has parsed the
+stylesheet, and a page that loads the CSS without calling `init` (`shave`'s extension popup does)
+would never reach it.
+
+---
+
 ## Module boundary
 
 > **SUPERSEDED** by *The library is an ES module* below. The entry as written describes the
