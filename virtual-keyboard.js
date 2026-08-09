@@ -275,7 +275,7 @@ function builtInLayoutMetadata(layoutId) {
     if (!layout) {
         throw new Error(`Layout ${layoutId} is not loaded; cannot resolve its name`);
     }
-    if (!layout.displayName) {
+    if (!layout.displayName || !layout.displayName.trim()) {
         throw new Error(`Layout ${layoutId} carries no displayName`);
     }
     return layout;
@@ -292,7 +292,7 @@ function builtInLatinName(layoutId) {
 function layoutDisplayName(layoutId) {
     if (!isBuiltInLayoutName(layoutId)) {
         const custom = customDisplayNameResolver && customDisplayNameResolver(layoutId);
-        if (!custom) {
+        if (!custom || !custom.trim()) {
             throw new Error(`Cannot resolve a display name for layout ${layoutId}`);
         }
         return custom;
@@ -303,8 +303,18 @@ function layoutDisplayName(layoutId) {
 
 // Load every built-in layout so the SYNCHRONOUS naming surfaces can read names
 // straight from them. Awaited by the async seams that precede a render.
+//
+// Throws if any built-in is absent: loadKeyboardLayout answers a failed fetch
+// with null, so without this check a missing file resolves the preload
+// successfully and the first naming call throws instead — deep inside a render,
+// where the mount seam's catch turns it into a blank panel.
 async function preloadBuiltInLayouts() {
-    await Promise.all(BUILT_IN_LAYOUT_IDS_IN_MENU_ORDER.map(id => loadKeyboardLayout(id)));
+    const loaded = await Promise.all(
+        BUILT_IN_LAYOUT_IDS_IN_MENU_ORDER.map(id => loadKeyboardLayout(id)));
+    const missing = BUILT_IN_LAYOUT_IDS_IN_MENU_ORDER.filter((id, i) => !loaded[i]);
+    if (missing.length > 0) {
+        throw new Error(`Built-in layouts failed to load: ${missing.join(', ')}`);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -434,7 +444,7 @@ async function setScript(script, dialect) {
 // unidentifiable. Built-ins and customs both resolve through here: they carry the
 // same metadata shape (LAYOUT_METADATA_FIELDS), so neither needs a special case.
 function preferredScriptLabel(latin, shavian) {
-    return libraryScript === 'shavian' && shavian ? shavian : latin;
+    return libraryScript === 'shavian' && shavian && shavian.trim() ? shavian : latin;
 }
 
 // A custom layout's display name in the active script, or null when `id` names
@@ -3056,13 +3066,12 @@ function setCustomLayoutResolver(dataFn, nameFn) {
 // keeps serving the pre-change data until a full page reload. Passing no name
 // evicts every custom layout.
 //
-// Built-ins are deliberately NOT evicted: their data is static files that can
-// only reload identical, and their residency is a precondition of naming
-// (layoutDisplayName reads the loaded layout), so dropping them would brick every
-// naming surface — an open picker included — for nothing.
+// Built-ins are never evicted, by either form: they are load-once by design, and
+// their residency is a precondition of naming (layoutDisplayName reads the loaded
+// layout), so dropping one bricks every naming surface until something reloads it.
 function invalidateLayoutCache(layoutName) {
     if (layoutName !== undefined) {
-        delete KEYBOARD_MAPS[layoutName];
+        if (!isBuiltInLayoutName(layoutName)) delete KEYBOARD_MAPS[layoutName];
         return;
     }
     for (const key of Object.keys(KEYBOARD_MAPS)) {

@@ -136,6 +136,20 @@ function stubElement(tag = 'div') {
   };
 }
 
+// Run `fn` with one layout file answering 404, the way a build that shipped
+// without it would. Restores the real fetch afterwards.
+async function withMissingLayoutFile(layoutId, fn) {
+  const realFetch = globalThis.fetch;
+  const absent = `keyboard_layout_${layoutId}.json`;
+  globalThis.fetch = async (url) => {
+    if (String(url).includes(absent)) {
+      return { ok: false, status: 404, text: async () => '', json: async () => ({}) };
+    }
+    return realFetch(url);
+  };
+  try { await fn(); } finally { globalThis.fetch = realFetch; }
+}
+
 // The settings mount's container: the picker looks up #vk-layout-list inside it,
 // and pickerMount walks back up to the [data-vk-group] host.
 function pickerContainerStub() {
@@ -158,13 +172,20 @@ await check('every user-facing built-in layout JSON carries its displayName', as
 });
 
 // Built-ins carry the SAME metadata shape as custom layouts, so no surface needs
-// a built-in special case.
+// a built-in special case. The name fields must also be non-blank: `typeof
+// === 'string'` alone admits "", which reaches a Shavian title bar as nothing.
+const BUILT_IN_REQUIRED_NON_BLANK = ['displayName', 'shavianDisplayName'];
+
 await check('built-in layouts carry the custom-layout metadata shape', async () => {
   for (const id of Object.keys(EXPECTED_NAMES)) {
     const layout = JSON.parse(readFileSync(new URL(`keyboard_layout_${id}.json`, REPO), 'utf8'));
     for (const field of ['displayName', 'description', 'shavianDisplayName', 'shavianDescription']) {
       assert(typeof layout[field] === 'string',
         `keyboard_layout_${id}.json is missing the ${field} field`);
+    }
+    for (const field of BUILT_IN_REQUIRED_NON_BLANK) {
+      assert(layout[field].trim() !== '',
+        `keyboard_layout_${id}.json has a blank ${field} — a built-in must carry a name in both scripts`);
     }
   }
 });
@@ -377,6 +398,59 @@ await check('invalidateLayoutCache() leaves every built-in nameable', async () =
   }
 });
 
+// The per-name form must honour the same exemption as the bulk form above.
+// Evicting one built-in bricks naming just as thoroughly as evicting all five,
+// and the editor calls this form with whatever id it just saved.
+await check('invalidateLayoutCache(id) leaves a built-in nameable', async () => {
+  const { internal } = await loadVirtualKeyboard();
+  await internal.preloadBuiltInLayouts();
+  internal.invalidateLayoutCache('igc');
+  assert(internal.layoutDisplayName('igc') === EXPECTED_NAMES.igc,
+    `igc after a per-name cache clear named ${JSON.stringify(internal.layoutDisplayName('igc'))}`);
+});
+
+// A custom must still be evictable by name, or the per-name form does nothing —
+// the exemption above would pass just as well if the function had no body. The
+// resolver counts its calls: a cache hit never reaches it, an eviction does.
+await check('invalidateLayoutCache(id) still evicts a custom layout', async () => {
+  const { internal } = await loadVirtualKeyboard();
+  let resolveCount = 0;
+  internal.setCustomLayoutResolver((id) => { resolveCount++; return { keys: {} }; }, () => 'Name');
+  await internal.getKeyboardLayoutData('custom:evictable');
+  await internal.getKeyboardLayoutData('custom:evictable');
+  assert(resolveCount === 1, `expected the second read to hit the cache, resolver ran ${resolveCount} times`);
+  internal.invalidateLayoutCache('custom:evictable');
+  await internal.getKeyboardLayoutData('custom:evictable');
+  assert(resolveCount === 2, 'the per-name form did not evict a custom layout');
+});
+
+// --- a missing built-in file fails loudly rather than blanking the panel ----
+
+// The reproduced defect: loadKeyboardLayout answers a 404 with null, so
+// Promise.all resolved the preload SUCCESSFULLY with a built-in absent. The
+// first naming call then threw from inside renderPickerList, the mount seam's
+// catch logged "Error loading keyboard settings HTML", and the user got a
+// settings panel that never rendered — no visible error, one missing file.
+await check('a missing built-in layout file makes the preload fail loudly', async () => {
+  const { internal } = await loadVirtualKeyboard();
+  await withMissingLayoutFile('qwerty', async () => {
+    await assertRejects(async () => internal.preloadBuiltInLayouts(),
+      'the preload resolved with a built-in absent — a 404 must not resolve successfully');
+  });
+});
+
+// The failure must name the file that is missing, or the log leaves whoever
+// reads it no better off than the silent blank panel did.
+await check('the preload failure names the built-in that is missing', async () => {
+  const { internal } = await loadVirtualKeyboard();
+  await withMissingLayoutFile('qwerty', async () => {
+    let message = '';
+    try { await internal.preloadBuiltInLayouts(); } catch (e) { message = e.message; }
+    assert(message.includes('qwerty'),
+      `the failure did not name the missing layout: ${JSON.stringify(message)}`);
+  });
+});
+
 // --- a nameless layout fails loudly rather than showing an id --------------
 
 await check('a layout with no displayName raises, rather than rendering its id', async () => {
@@ -389,6 +463,52 @@ await check('an unresolvable custom layout raises, rather than rendering its id'
   const { internal } = await loadVirtualKeyboard();
   await assertRejects(async () => internal.layoutDisplayName('custom:no-such-layout'),
     'an unknown custom id must raise rather than reaching the screen as an id');
+});
+
+// A name that is only whitespace is not a name, and unlike a blank one it
+// survives every falsiness guard ("   " is truthy) and every
+// `typeof === 'string'` assertion. Both routes must refuse it, or the same
+// fault degrades two different ways.
+await check('a whitespace-only built-in name raises, rather than blanking the title', async () => {
+  const { internal } = await loadVirtualKeyboard();
+  await internal.preloadBuiltInLayouts();
+  (await internal.getKeyboardLayoutData('igc')).displayName = '   ';
+  await assertRejects(async () => internal.layoutDisplayName('igc'),
+    'a whitespace-only displayName must raise — it renders as an empty title bar');
+});
+
+// The throw above only helps if the surfaces let it out. A retitle that catches
+// it and writes on regardless puts the blank title bar back with no error, so
+// drive the real seam and require the sentinel to survive.
+await check('a retitle refuses a whitespace-only name rather than emptying the title', async () => {
+  const { api, internal, titleEl } = await loadVirtualKeyboard();
+  await internal.preloadBuiltInLayouts();
+  await api.setLayout('igc');
+  (await internal.getKeyboardLayoutData('igc')).displayName = '   ';
+  titleEl.textContent = 'untouched';
+  await assertRejects(async () => api.setScript('shavian', 'british'),
+    'the retitle swallowed the naming throw');
+  assert(titleEl.textContent === 'untouched',
+    `the title bar was written with a whitespace-only name: ${JSON.stringify(titleEl.textContent)}`);
+});
+
+await check('a whitespace-only custom name raises, like the built-in route', async () => {
+  const { internal } = await loadVirtualKeyboard();
+  internal.setCustomLayoutResolver(() => ({ keys: {} }), () => '   ');
+  await assertRejects(async () => internal.layoutDisplayName('custom:whitespace-name'),
+    'a whitespace-only custom name must raise, exactly as the built-in route does');
+});
+
+// The Shavian side of the same fault: a whitespace-only Shavian name is truthy,
+// so it WINS over a perfectly good Latin name and empties the title in a Shavian
+// UI. It must fall back to Latin, as a blank one already does.
+await check('a whitespace-only Shavian name falls back to the Latin one', async () => {
+  const { api, internal } = await loadVirtualKeyboard();
+  await internal.preloadBuiltInLayouts();
+  await api.setScript('shavian', 'british');
+  (await internal.getKeyboardLayoutData('igc')).shavianDisplayName = '   ';
+  assert(internal.layoutDisplayName('igc') === EXPECTED_NAMES.igc,
+    `expected the Latin name, got ${JSON.stringify(internal.layoutDisplayName('igc'))}`);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
