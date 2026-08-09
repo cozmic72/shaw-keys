@@ -8,6 +8,124 @@
     font-weight: 100 900;
 }
 
+/* --- Surface palette ---------------------------------------------------
+   The keyboard itself is dark in every theme (see .virtual-keyboard below):
+   it is a floating instrument, not a page surface. Its SETTINGS surfaces are
+   not — the picker (keyboard-settings.html) and the editor (layout-editor.css)
+   are injected into the host document and read as part of the host's page, so
+   they must follow the host's theme or they land light-on-dark.
+
+   Both host mechanisms are honoured because a host has three states, not two:
+   an explicit [data-theme] on an ancestor, or none at all, in which case the
+   OS preference decides. A media query alone misses an explicit choice that
+   contradicts the OS; a [data-theme] rule alone misses the unset case.
+
+   Values are defined here and not asked of the host: the library has five
+   consumers and cannot require any of them to supply a custom property. The
+   dark values are the keyboard's own #2a2a2a/#3d3d3d/#e0e0e0, so a themed
+   settings surface and the keyboard it configures read as one instrument. */
+:root {
+    --vk-surface: #fff;
+    --vk-surface-raised: #fafafa;
+    --vk-surface-hover: #f3f3f3;
+    --vk-surface-tint: #f8f9fa;
+    --vk-surface-sunken: #ececec;
+    --vk-text: #444;
+    --vk-text-muted: #777;
+    --vk-text-detail: #555;
+    --vk-text-meta: #666;
+    --vk-text-hint: #888;
+    --vk-dirty: #b06a1a;
+    --vk-border: #e0e0e0;
+    --vk-border-mid: #ddd;
+    --vk-border-soft: #d5d5d5;
+    --vk-border-strong: #d0d0d0;
+    --vk-border-control: #ccc;
+    --vk-accent: #007bff;
+    --vk-accent-fill: #e7f3ff;
+    --vk-accent-border: #cfe3ff;
+    --vk-accent-surface: #f4f9ff;
+    --vk-chip-text: #6b57c8;
+    --vk-chip-fill: #efeaff;
+    --vk-chip-border: #d9cffb;
+    /* The picker's badge and the editor's coverage line were authored with
+       different greens/ambers. Kept apart so light rendering is untouched;
+       they converge on one pair in dark, where the light shades are too dark
+       to read. */
+    --vk-badge-ok: #1a7f37;
+    --vk-coverage-ok: #28a745;
+    --vk-badge-warn: #b35900;
+    --vk-coverage-warn: #d9822b;
+    --vk-danger: #c0392b;
+    --vk-danger-border: #e8c4c0;
+}
+
+:root[data-theme="dark"] {
+    --vk-surface: #2a2a2a;
+    --vk-surface-raised: #3d3d3d;
+    --vk-surface-hover: #4a4a4a;
+    --vk-surface-tint: #333;
+    --vk-surface-sunken: #353535;
+    --vk-text: #e0e0e0;
+    --vk-text-muted: #aaa;
+    --vk-text-detail: #bbb;
+    --vk-text-meta: #b0b0b0;
+    --vk-text-hint: #9a9a9a;
+    --vk-dirty: #e0a35c;
+    --vk-border: #4a4a4a;
+    --vk-border-mid: #454545;
+    --vk-border-soft: #4f4f4f;
+    --vk-border-strong: #5a5a5a;
+    --vk-border-control: #5a5a5a;
+    --vk-accent: #4a9eff;
+    --vk-accent-fill: #24384d;
+    --vk-accent-border: #3a6285;
+    --vk-accent-surface: #24303d;
+    --vk-chip-text: #b9a9f5;
+    --vk-chip-fill: #332d4a;
+    --vk-chip-border: #4c4370;
+    --vk-badge-ok: #5fd18a;
+    --vk-coverage-ok: #5fd18a;
+    --vk-badge-warn: #e0a35c;
+    --vk-coverage-warn: #e0a35c;
+    --vk-danger: #f08a7d;
+    --vk-danger-border: #7a4038;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --vk-surface: #2a2a2a;
+        --vk-surface-raised: #3d3d3d;
+        --vk-surface-hover: #4a4a4a;
+        --vk-surface-tint: #333;
+        --vk-surface-sunken: #353535;
+        --vk-text: #e0e0e0;
+        --vk-text-muted: #aaa;
+        --vk-text-detail: #bbb;
+        --vk-text-meta: #b0b0b0;
+        --vk-text-hint: #9a9a9a;
+        --vk-dirty: #e0a35c;
+        --vk-border: #4a4a4a;
+        --vk-border-mid: #454545;
+        --vk-border-soft: #4f4f4f;
+        --vk-border-strong: #5a5a5a;
+        --vk-border-control: #5a5a5a;
+        --vk-accent: #4a9eff;
+        --vk-accent-fill: #24384d;
+        --vk-accent-border: #3a6285;
+        --vk-accent-surface: #24303d;
+        --vk-chip-text: #b9a9f5;
+        --vk-chip-fill: #332d4a;
+        --vk-chip-border: #4c4370;
+        --vk-badge-ok: #5fd18a;
+        --vk-coverage-ok: #5fd18a;
+        --vk-badge-warn: #e0a35c;
+        --vk-coverage-warn: #e0a35c;
+        --vk-danger: #f08a7d;
+        --vk-danger-border: #7a4038;
+    }
+}
+
 /* Virtual Keyboard Floating Window */
 .virtual-keyboard {
     position: fixed;

@@ -62,6 +62,15 @@ loads. Without the font the keyboard still works, but letters carrying a variati
 selector (VS1) render as their bare base letter, because no system font draws
 those variants.
 
+The keyboard is dark whatever the host's theme — it is a floating instrument, not
+a page surface. Its settings surfaces are the opposite: the layout picker and the
+editor are injected into the host document, so they follow the host's theme. That
+is driven off `prefers-color-scheme` and off a `data-theme` of `light` or `dark`
+on an ancestor, the explicit choice winning; a host that sets neither gets the OS
+preference. The `--vk-*` custom properties in `virtual-keyboard.css` hold both
+palettes, so a host supplies nothing — but one overriding them re-themes both
+surfaces without touching a rule.
+
 ### Cache busting, and why there is no version
 
 `virtual-keyboard.js` reads a `?v=` parameter off its own `import.meta.url` and

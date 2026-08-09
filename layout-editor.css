@@ -38,11 +38,11 @@ body.le-picker-open #virtualKeyboard {
    note tinted amber when present. */
 .le-editing-line {
     font-size: 0.9em;
-    color: #666;
+    color: var(--vk-text-meta);
 }
 
 .le-editing-line.le-dirty {
-    color: #b06a1a;
+    color: var(--vk-dirty);
 }
 
 /* Coverage line: ⚠ amber when incomplete, green ✓ when complete. */
@@ -52,11 +52,11 @@ body.le-picker-open #virtualKeyboard {
 }
 
 .le-coverage-ok {
-    color: #28a745;
+    color: var(--vk-coverage-ok);
 }
 
 .le-coverage-warn {
-    color: #d9822b;
+    color: var(--vk-coverage-warn);
 }
 
 /* Form controls do not inherit font-family, so the UA's system font wins unless
@@ -86,9 +86,9 @@ body.le-picker-open #virtualKeyboard {
     gap: 4px;
     padding: 8px;
     max-width: calc(100vw - 16px);
-    border: 1px solid #d0d0d0;
+    border: 1px solid var(--vk-border-strong);
     border-radius: 10px;
-    background: #fff;
+    background: var(--vk-surface);
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22);
 }
 
@@ -102,10 +102,10 @@ body.le-picker-open #virtualKeyboard {
     font-family: 'Inter-Alia', sans-serif;
     font-size: 20px;
     line-height: 1;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--vk-border);
     border-radius: 6px;
-    background: #fafafa;
-    color: #222;
+    background: var(--vk-surface-raised);
+    color: var(--vk-text);
     cursor: pointer;
 }
 
@@ -119,8 +119,8 @@ body.le-picker-open #virtualKeyboard {
 }
 
 .le-palette-glyph:hover {
-    border-color: #4a90d9;
-    background: #eaf3fb;
+    border-color: var(--vk-accent);
+    background: var(--vk-accent-fill);
 }
 
 .le-controls {
@@ -137,8 +137,10 @@ body.le-picker-open #virtualKeyboard {
 #layoutEditorShavianDescription {
     padding: 7px 8px;
     font-size: 14px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--vk-border);
     border-radius: 8px;
+    background: var(--vk-surface);
+    color: var(--vk-text);
     flex: 1;
     min-width: 120px;
 }
@@ -195,11 +197,11 @@ body.le-picker-open #virtualKeyboard {
    corners, so it reads as joined to the panel it labels. */
 .le-layer-tab {
     border: none;
-    background: #ececec;
+    background: var(--vk-surface-sunken);
     padding: 6px 16px;
     font-size: 13px;
     cursor: pointer;
-    color: #555;
+    color: var(--vk-text-detail);
     border-radius: 8px 8px 0 0;
 }
 
@@ -375,7 +377,7 @@ body.le-picker-open #virtualKeyboard {
 }
 
 .le-hint {
-    color: #888;
+    color: var(--vk-text-hint);
     font-size: 0.82em;
     margin: 6px 0;
 }
@@ -383,7 +385,7 @@ body.le-picker-open #virtualKeyboard {
 .le-section {
     display: block;
     margin: 14px 0 6px;
-    color: #666;
+    color: var(--vk-text-meta);
     font-weight: normal;
 }
 
@@ -417,18 +419,19 @@ body.le-picker-open #virtualKeyboard {
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    border: 2px solid #d0d0d0;
+    border: 2px solid var(--vk-border-strong);
     border-radius: 5px;
-    background: #fff;
+    background: var(--vk-surface);
+    color: var(--vk-text);
 }
 
 .le-slot-empty {
     border-style: dashed;
-    background: #fafafa;
+    background: var(--vk-surface-raised);
 }
 
 .le-lig-op {
-    color: #888;
+    color: var(--vk-text-hint);
     font-size: 15px;
 }
 
@@ -436,7 +439,7 @@ body.le-picker-open #virtualKeyboard {
     margin-left: 4px;
     border: none;
     background: none;
-    color: #c0392b;
+    color: var(--vk-danger);
     font-size: 15px;
     cursor: pointer;
 }
@@ -452,17 +455,17 @@ body.le-picker-open #virtualKeyboard {
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    border: 2px dashed #d0d0d0;
+    border: 2px dashed var(--vk-border-strong);
     border-radius: 5px;
-    background: #fafafa;
-    color: #888;
+    background: var(--vk-surface-raised);
+    color: var(--vk-text-hint);
     cursor: pointer;
     padding: 0;
 }
 
 .le-lig-add:hover {
-    border-color: #888;
-    color: #444;
+    border-color: var(--vk-text-hint);
+    color: var(--vk-text);
 }
 
 /* Pinned action bar (Back · Save · Done). stretch equalises heights; each flex:1
@@ -474,14 +477,14 @@ body.le-picker-open #virtualKeyboard {
     gap: 6px;
     flex-wrap: wrap;
     align-items: center;
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid var(--vk-border);
     padding-top: 10px;
     margin-top: 10px;
 }
 
 .le-manage-label {
     font-size: 13px;
-    color: #777;
+    color: var(--vk-text-muted);
     margin-right: 2px;
 }
 
@@ -491,8 +494,8 @@ body.le-picker-open #virtualKeyboard {
 }
 
 .le-manage-danger {
-    color: #c0392b;
-    border-color: #e8c4c0;
+    color: var(--vk-danger);
+    border-color: var(--vk-danger-border);
 }
 
 .le-footer {
@@ -500,7 +503,7 @@ body.le-picker-open #virtualKeyboard {
     gap: 8px;
     flex-wrap: wrap;
     align-items: stretch;
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid var(--vk-border);
     padding-top: 12px;
     margin-top: 10px;
 }
@@ -530,13 +533,13 @@ body.le-picker-open #virtualKeyboard {
 .le-btn {
     padding: 8px 12px;
     font-size: 14px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--vk-border);
     border-radius: 8px;
-    background: #fff;
-    color: #444;
+    background: var(--vk-surface);
+    color: var(--vk-text);
     cursor: pointer;
 }
 
 .le-btn:hover {
-    background: #f3f3f3;
+    background: var(--vk-surface-hover);
 }
