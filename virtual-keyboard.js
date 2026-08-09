@@ -192,21 +192,16 @@ function setLigaturePreviewActive(active) {
 // Track current layout name
 let currentLayoutName = null;
 
-// Canonical registry of the built-in layouts, in menu order. The single source
-// of truth for "which names are built in" and their plain display names — the
-// editor's base picker (listBuiltInLayouts) and isBuiltInLayoutName both derive
-// from it so they can never drift. displayName is the plain-English fallback; the
-// dialog's bilingual names come from BUILT_IN_LAYOUT_NAME_KEYS via vkString.
-const BUILT_IN_LAYOUTS = [
-    { id: 'imperial', displayName: 'Shaw Imperial' },
-    { id: 'igc', displayName: 'Imperial Good Companion' },
-    { id: 'qwerty', displayName: 'Shaw QWERTY' },
-    { id: '2layer', displayName: 'Shaw 2-layer (shift)' },
-    { id: 'jafl', displayName: 'Shaw-JAFL' },
+// Canonical registry of the built-in layout IDS, in menu order — the single
+// source of truth for which layouts are built in, and the order they appear in.
+// It deliberately carries NO names: a layout names itself, in the same metadata
+// fields a custom layout uses, so no surface needs a built-in special case.
+const BUILT_IN_LAYOUT_IDS_IN_MENU_ORDER = [
+    'imperial', 'igc', 'qwerty', '2layer', 'jafl',
 ];
 
 // The built-in ids as a Set for O(1) membership tests.
-const BUILT_IN_LAYOUT_IDS = new Set(BUILT_IN_LAYOUTS.map(l => l.id));
+const BUILT_IN_LAYOUT_IDS = new Set(BUILT_IN_LAYOUT_IDS_IN_MENU_ORDER);
 
 // Longest custom layout name, in GRAPHEMES (not UTF-16 units — a Shavian letter
 // is a surrogate pair, a VS1 variant two codepoints). Custom names reach the
@@ -264,31 +259,52 @@ function toGraphemes(text) {
     return graphemes;
 }
 
-// A copy of the built-in registry, for hosts building a layout picker (e.g. the
-// editor's base list = built-ins + custom layouts). displayName is resolved
-// through the shared translation table (the registry's English is the fallback).
-// Returns fresh objects so a caller can't mutate the canonical table.
+// The built-ins as {id, displayName}, for hosts building a layout picker.
+// Requires the layouts to be loaded — see preloadBuiltInLayouts.
 function listBuiltInLayouts() {
-    return BUILT_IN_LAYOUTS.map(l => ({
-        id: l.id,
-        displayName: vkString(builtInLayoutNameKey(l.id), l.displayName),
+    return BUILT_IN_LAYOUT_IDS_IN_MENU_ORDER.map(id => ({
+        id,
+        displayName: layoutDisplayName(id),
     }));
 }
 
-// The built-in layouts' display-name translation keys (values live in the host's
-// translation table, keyed here so there is ONE bilingual mechanism — the shared
-// translation pipeline — not a second split-string map). Consumed by vkString via
-// builtInLayoutNameKey.
-const BUILT_IN_LAYOUT_NAME_KEYS = {
-    'imperial': 'vkLayoutImperial',
-    'igc': 'vkLayoutIgc',
-    'qwerty': 'vkLayoutQwerty',
-    '2layer': 'vkLayout2layer',
-    'jafl': 'vkLayoutJafl',
-};
+// A built-in layout's own metadata, read from the loaded layout. Throws rather
+// than degrading to the id — an id on screen is the defect this replaced.
+function builtInLayoutMetadata(layoutId) {
+    const layout = KEYBOARD_MAPS[layoutId];
+    if (!layout) {
+        throw new Error(`Layout ${layoutId} is not loaded; cannot resolve its name`);
+    }
+    if (!layout.displayName) {
+        throw new Error(`Layout ${layoutId} carries no displayName`);
+    }
+    return layout;
+}
 
-function builtInLayoutNameKey(layoutId) {
-    return BUILT_IN_LAYOUT_NAME_KEYS[layoutId] || null;
+// A built-in layout's name in LATIN, whatever script the UI is in — safe to
+// store or slugify, unlike a script-dependent label.
+function builtInLatinName(layoutId) {
+    return builtInLayoutMetadata(layoutId).displayName;
+}
+
+// THE name-resolution point for every layout and every surface — title bar,
+// picker, editor, clone-base list — so a change to one can never miss another.
+function layoutDisplayName(layoutId) {
+    if (!isBuiltInLayoutName(layoutId)) {
+        const custom = customDisplayNameResolver && customDisplayNameResolver(layoutId);
+        if (!custom) {
+            throw new Error(`Cannot resolve a display name for layout ${layoutId}`);
+        }
+        return custom;
+    }
+    const layout = builtInLayoutMetadata(layoutId);
+    return preferredScriptLabel(layout.displayName, layout.shavianDisplayName);
+}
+
+// Load every built-in layout so the SYNCHRONOUS naming surfaces can read names
+// straight from them. Awaited by the async seams that precede a render.
+async function preloadBuiltInLayouts() {
+    await Promise.all(BUILT_IN_LAYOUT_IDS_IN_MENU_ORDER.map(id => loadKeyboardLayout(id)));
 }
 
 // ---------------------------------------------------------------------------
@@ -383,10 +399,7 @@ function refreshUiStrings() {
     // (no full relabel; that needs the layout map, reloaded elsewhere on switch).
     const kbTitle = document.querySelector('.keyboard-title');
     if (kbTitle && currentLayoutName) {
-        const nameKey = builtInLayoutNameKey(currentLayoutName);
-        kbTitle.textContent = nameKey
-            ? vkString(nameKey, currentLayoutName)
-            : ((customDisplayNameResolver && customDisplayNameResolver(currentLayoutName)) || currentLayoutName);
+        kbTitle.textContent = layoutDisplayName(currentLayoutName);
     }
 }
 
@@ -416,10 +429,10 @@ async function setScript(script, dialect) {
     refreshUiStrings();
 }
 
-// A custom layout's label in the ACTIVE script, falling back to the Latin one
-// when the author left the Shavian counterpart blank — Latin is canonical, so a
-// layout is never unidentifiable. `latin` is the caller's already-resolved Latin
-// value; `shavian` its optional counterpart.
+// A layout's label in the ACTIVE script, falling back to the Latin one when the
+// Shavian counterpart is blank — Latin is canonical, so a layout is never
+// unidentifiable. Built-ins and customs both resolve through here: they carry the
+// same metadata shape (LAYOUT_METADATA_FIELDS), so neither needs a special case.
 function preferredScriptLabel(latin, shavian) {
     return libraryScript === 'shavian' && shavian ? shavian : latin;
 }
@@ -469,8 +482,7 @@ function structuralFamilyOf(layoutName, layout) {
 }
 
 // Whether `name` is a known built-in layout — the authoritative check that
-// validateLayout uses to reject a custom layout's unknown `base`. Derived from
-// BUILT_IN_LAYOUTS (the single registry) so the two never drift.
+// validateLayout uses to reject a custom layout's unknown `base`.
 function isBuiltInLayoutName(name) {
     return BUILT_IN_LAYOUT_IDS.has(name);
 }
@@ -1006,16 +1018,10 @@ function updateKeyboardLabels(keyboardMap, layoutName, layout) {
         keyboardBody.classList.toggle('structure-imperial', isImperialStructure);
     }
 
-    // Update title to show keyboard name (in the active UI script, via the shared
-    // translation table for built-ins; custom names are the user's own text).
     const titleElement = document.querySelector('.keyboard-title');
     if (titleElement) {
-        const nameKey = builtInLayoutNameKey(layoutName);
-        const displayName = nameKey
-            ? vkString(nameKey, layoutName)
-            : ((customDisplayNameResolver && customDisplayNameResolver(layoutName)) || layoutName);
         const shiftIndicator = isShiftActive ? ' (Shift)' : '';
-        titleElement.textContent = displayName + shiftIndicator;
+        titleElement.textContent = layoutDisplayName(layoutName) + shiftIndicator;
     }
 
     // Update key labels
@@ -1575,6 +1581,10 @@ async function loadVirtualKeyboardSettingsHTML(containerElement) {
         const html = await response.text();
         containerElement.innerHTML = html;
 
+        // renderPickerList names every row straight from its layout, so the
+        // layouts must be in hand before it runs.
+        await preloadBuiltInLayouts();
+
         // Scope the radio group to THIS surface: two mounted fragments (dialog +
         // embedded tab) at document scope would otherwise collapse into one group
         // and steal each other's selection. renderPickerList stamps this name onto
@@ -1908,7 +1918,7 @@ function editorEntryFor(containerElement) {
 function listAllLayouts() {
     const builtIns = listBuiltInLayouts().map(l => ({ ...l, isCustom: false }));
     const customs = CustomLayouts.listCustomLayouts().map(
-        l => ({ id: l.id, displayName: customLayoutLabel(l.id), isCustom: true }));
+        l => ({ id: l.id, displayName: layoutDisplayName(l.id), isCustom: true }));
     return builtIns.concat(customs);
 }
 
@@ -2125,14 +2135,6 @@ function cloneName(sourceName, suffix) {
     const room = NAME_CAP_GRAPHEMES - toGraphemes(suffix).length;
     const head = toGraphemes((sourceName || '').trim()).slice(0, room).join('').trim();
     return head ? head + suffix : '';
-}
-
-// A built-in layout's display name in LATIN, whatever script the UI is in. The
-// registry's own English — the Shavian labels are translated UI strings, which
-// must never be laundered into a stored data field (or into the slug).
-function builtInLatinName(layoutId) {
-    const layout = BUILT_IN_LAYOUTS.find(l => l.id === layoutId);
-    return layout ? layout.displayName : null;
 }
 
 // The clone-source set offered by the New… base picker: built-ins + existing
@@ -3052,14 +3054,19 @@ function setCustomLayoutResolver(dataFn, nameFn) {
 // source. The host must call this when a custom layout's stored data changes
 // (edited in place) or is deleted — otherwise loadKeyboardLayout's cache hit
 // keeps serving the pre-change data until a full page reload. Passing no name
-// clears the whole cache.
+// evicts every custom layout.
+//
+// Built-ins are deliberately NOT evicted: their data is static files that can
+// only reload identical, and their residency is a precondition of naming
+// (layoutDisplayName reads the loaded layout), so dropping them would brick every
+// naming surface — an open picker included — for nothing.
 function invalidateLayoutCache(layoutName) {
-    if (layoutName === undefined) {
-        for (const key of Object.keys(KEYBOARD_MAPS)) {
-            delete KEYBOARD_MAPS[key];
-        }
-    } else {
+    if (layoutName !== undefined) {
         delete KEYBOARD_MAPS[layoutName];
+        return;
+    }
+    for (const key of Object.keys(KEYBOARD_MAPS)) {
+        if (!isBuiltInLayoutName(key)) delete KEYBOARD_MAPS[key];
     }
 }
 
@@ -3189,6 +3196,8 @@ export const VirtualKeyboard = {
         physicalKeyFor: physicalKeyFor,
         cloneName: cloneName,
         builtInLatinName: builtInLatinName,
+        layoutDisplayName: layoutDisplayName,
+        preloadBuiltInLayouts: preloadBuiltInLayouts,
         // UI-string helpers for the sibling editor: vkString resolves a key in the
         // active script (Latin fallback); applyUiStrings stamps [data-i18n] etc.
         vkString: vkString,

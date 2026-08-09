@@ -22,8 +22,9 @@ host cannot load a partial library.
 
 The library fetches the rest of its assets at runtime relative to its own
 `import.meta.url`: `virtual-keyboard.html`, `keyboard-settings.html` and
-`layout-editor.html`; `keyboard_layouts.json` and the `keyboard_layout_*.json`
-for whichever layout is active; and one `translations_*.json`. Everything in this
+`layout-editor.html`; the `keyboard_layout_*.json` of all five built-in layouts,
+which the settings mount preloads together because each names itself from its own
+file; and one `translations_*.json`. Everything in this
 repository must therefore be served from one flat directory, not just the file
 named in the `<script>` tag.
 
@@ -221,9 +222,11 @@ shaw-type keeps working, and new hosts should not rely on it.
 
 ### Built-in layouts
 
-Five, registered in `keyboard_layouts.json`: `imperial`, `igc`, `qwerty`,
-`2layer`, `jafl`. `listBuiltInLayouts` is on `_internal`, not the supported
-surface — read the JSON instead.
+Five: `imperial`, `igc`, `qwerty`, `2layer`, `jafl`. The registry is
+`BUILT_IN_LAYOUT_IDS_IN_MENU_ORDER` in `virtual-keyboard.js`; each layout carries
+its own name in the `displayName` / `shavianDisplayName` fields of its
+`keyboard_layout_*.json`, the same metadata shape a custom layout uses.
+`listBuiltInLayouts` is on `_internal`, not the supported surface.
 
 The other `keyboard_layout_*.json` files are experimental and not registered.
 They load if named explicitly but are not offered in the picker.
