@@ -1,6 +1,6 @@
 # Decision log
 
-Durable decisions for `virtual-keyboard`, each with its rationale and where it lives in the code.
+Durable decisions for `shaw-keys`, each with its rationale and where it lives in the code.
 States, scope and lifecycle follow
 [`meta/docs/decision-log-convention.md`](../../meta/docs/decision-log-convention.md).
 
@@ -20,11 +20,11 @@ does not carry.
 ## Versioning
 
 **We will take a cache-busting token from our own script tag and have no version of our own** —
-PROPOSED (built; `VIRTUAL_KEYBOARD_VERSION`, `getVirtualKeyboardBasePath` and `versionedUrl` in
-[`virtual-keyboard.js`](../virtual-keyboard.js)).
+PROPOSED (built; `SHAW_KEYS_VERSION`, `getShawKeysBasePath` and `versionedUrl` in
+[`shaw-keys.js`](../shaw-keys.js)).
 
 The library fetches assets — layout JSON, the settings HTML, the string tables — at runtime, so a
-browser that cached them under a previous release serves stale ones. `getVirtualKeyboardBasePath`
+browser that cached them under a previous release serves stale ones. `getShawKeysBasePath`
 scrapes `?v=` off the `<script src>` that loaded it, and `versionedUrl` appends that value to every
 asset URL. The value is never reported, logged, or compared. `init`'s second parameter is named
 `resourceVersion` and is ignored; the query string is the only input.
@@ -60,10 +60,10 @@ restated, and the authority if the two disagree.
 
 ## The consumer supplies the font URL when staging
 
-**PROPOSED** (built; `{{FONT_URL}}` in [`virtual-keyboard.css`](../virtual-keyboard.css),
+**PROPOSED** (built; `{{FONT_URL}}` in [`shaw-keys.css`](../shaw-keys.css),
 [`tools/stage.sh`](../tools/stage.sh)).
 
-`virtual-keyboard.css` hardcoded `https://joro.io/fonts/InterAlia-VF.otf`, so every host fetched
+`shaw-keys.css` hardcoded `https://joro.io/fonts/InterAlia-VF.otf`, so every host fetched
 that origin even when it already served the same file — `shave` ships `InterAlia-VF.otf` and
 fetched a remote copy of it anyway. The family's other repositories take the font URL per
 invocation (`shaw-type`'s `--font-url`, `shaw-spell`'s `FONT_URL`), and every consumer of this
@@ -95,10 +95,10 @@ Consequences:
   pointing the token at its own copy is the one redistributing. See [`LICENSE.md`](../LICENSE.md).
 
 Considered and rejected: a CSS custom property with a remote fallback
-(`url(var(--vk-font-url, …))`) — **tested in Chromium 141 and WebKit 26.0 and it does not work in
+(`url(var(--sk-font-url, …))`) — **tested in Chromium 141 and WebKit 26.0 and it does not work in
 either**; the `@font-face` is dropped and the text renders in the fallback face, and
 `document.fonts.check()` still reports `true`, so nothing detects it. A separately linkable
-`virtual-keyboard-font.css` — no logic, but it keeps a hardcoded production URL in this repository
+`shaw-keys-font.css` — no logic, but it keeps a hardcoded production URL in this repository
 and a host that forgets the second `<link>` fails silently. Resolving the font through
 `setResourceUrlResolver` — the resolver runs at `init`, long after the browser has parsed the
 stylesheet, and a page that loads the CSS without calling `init` (`shave`'s extension popup does)
@@ -117,14 +117,14 @@ would never reach it.
 > made coverage report full is unreachable — a module that loaded at all has already resolved the
 > one it imports from. The hazard as described below is history, not a standing warning.
 
-**We will curate the public surface on `window.VirtualKeyboard` while leaving the global scope
-uncontrolled** — PROPOSED (built; `window.VirtualKeyboard` in
-[`virtual-keyboard.js`](../virtual-keyboard.js), `window.CustomLayouts` in
+**We will curate the public surface on `window.ShawKeys` while leaving the global scope
+uncontrolled** — PROPOSED (built; `window.ShawKeys` in
+[`shaw-keys.js`](../shaw-keys.js), `window.CustomLayouts` in
 [`custom-layouts.js`](../custom-layouts.js), `window.LayoutEditor` in
 [`layout-editor.js`](../layout-editor.js)).
 
 The three files are plain scripts with no module system and no bundler, sharing one global scope.
-`window.VirtualKeyboard` names 26 host-facing entry points plus an `_internal` sub-object of 28
+`window.ShawKeys` names 26 host-facing entry points plus an `_internal` sub-object of 28
 more, each of the 26 carrying a comment on what a host uses it for. The split was a deliberate act,
 not drift: `5d8b00b` in `shaw-type` moved library-internal entry points behind `_internal` under its
 own heading.
@@ -132,13 +132,13 @@ own heading.
 The enforcement is asymmetric, and that is the part worth recording. `layout-editor.js` wraps
 itself in an IIFE, for the reason its header comment gives: a bare top-level `function open` would
 clobber `window.open`, and generic names risk a fatal duplicate-`const` collision across files
-sharing one scope. `virtual-keyboard.js` and `custom-layouts.js` are not wrapped, so every
+sharing one scope. `shaw-keys.js` and `custom-layouts.js` are not wrapped, so every
 top-level declaration in them — `CUSTOM_LAYOUTS_KEY`, `versionedUrl`, the lot — is a global
 alongside the curated object.
 
 Chosen: the curated object is the documented contract; the leaked globals are not part of it and
 carry no guarantee. A host, and the sibling files, reach the library only through
-`window.VirtualKeyboard` and `window.CustomLayouts`.
+`window.ShawKeys` and `window.CustomLayouts`.
 
 Consequences:
 
@@ -181,7 +181,7 @@ consumer touches the library's globals at parse time, and module scripts execute
 bundler, so the no-build-step decision stands rather than being traded away.
 
 What it bought is more than one fewer script tag. `import.meta.url` replaces a scan of
-`document.scripts` for a `src` containing `virtual-keyboard.js` — correct by construction rather
+`document.scripts` for a `src` containing `shaw-keys.js` — correct by construction rather
 than by convention, and immune to being confused by an injected tag. The bidirectional coupling
 recorded above stops needing an ordering, because the browser resolves the cycle. And a race that
 could not be worked around any other way is gone: `init` reaches `window.CustomLayouts` through
@@ -228,11 +228,11 @@ An MV3 content script is a file a browser extension declares in `manifest.json` 
 `content_scripts[].js` and the browser injects into every matching page. The injection is the
 manifest entry — there is no `<script>` tag in the document to carry `type="module"`, and the array
 has no per-file equivalent of that attribute. Module syntax in such a file is therefore a parse
-error with nothing to swap. `shave/extensions/safari/manifest.json` injects `virtual-keyboard.js`
+error with nothing to swap. `shave/extensions/safari/manifest.json` injects `shaw-keys.js`
 exactly this way, in the `content_scripts` entry matching `<all_urls>`.
 
 The globals are not the problem. The module build still assigns all three —
-`window.VirtualKeyboard` in [`virtual-keyboard.js`](../virtual-keyboard.js),
+`window.ShawKeys` in [`shaw-keys.js`](../shaw-keys.js),
 `window.CustomLayouts` in [`custom-layouts.js`](../custom-layouts.js), `window.LayoutEditor` in
 [`layout-editor.js`](../layout-editor.js) (verified at `56046d1`). A consumer that reads a global
 still finds it. What the format costs a **page** consumer is timing, because a module script
@@ -286,7 +286,7 @@ resolver-style storage adapter under it, matching the existing `setResourceUrlRe
 
 Chosen: the library owns `localStorage` directly. `readStore` and `writeStore` in
 [`custom-layouts.js`](../custom-layouts.js) read and write the `customLayouts` blob; the library's
-own `VK_SETTINGS_KEY` settings in [`virtual-keyboard.js`](../virtual-keyboard.js) were already
+own `SK_SETTINGS_KEY` settings in [`shaw-keys.js`](../shaw-keys.js) were already
 direct and are unchanged.
 
 The adapter bought nothing for the only host that exists, and every read path had to be synchronous

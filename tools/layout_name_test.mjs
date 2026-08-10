@@ -9,7 +9,7 @@
 // loaded. Names now live in the layout JSONs and every surface reads them
 // through one resolver (layoutDisplayName).
 //
-// Imports virtual-keyboard.js under a window/document stub and serves the real
+// Imports shaw-keys.js under a window/document stub and serves the real
 // layout JSONs from disk, so it constrains the shipped code and the shipped data
 // rather than a restatement of either.
 //
@@ -39,7 +39,7 @@ const EXPECTED_NAMES = {
 };
 
 // The Shavian names, now carried by the layouts themselves. Transcribed from the
-// vkLayout* translation keys they replaced, which have since been retired.
+// skLayout* translation keys they replaced, which have since been retired.
 const EXPECTED_SHAVIAN_NAMES = {
   imperial: '𐑖𐑷 𐑦𐑥𐑐𐑽𐑾𐑤',
   igc: '𐑦𐑥𐑐𐑽𐑾𐑤 𐑜𐑫𐑛 𐑒𐑩𐑥𐑐𐑨𐑯𐑘𐑩𐑯',
@@ -58,7 +58,7 @@ const REPO = new URL('../', import.meta.url);
 // reads, so a test can present a custom layout the built-ins cannot: one whose
 // author left the Shavian name blank.
 let loadCount = 0;
-async function loadVirtualKeyboard(storedCustomLayouts = null) {
+async function loadShawKeys(storedCustomLayouts = null) {
   const titleEl = { className: 'keyboard-title', textContent: '' };
   const bodyEl = { className: '', classList: { add() {}, remove() {}, toggle() {} } };
   const document = {
@@ -103,8 +103,8 @@ async function loadVirtualKeyboard(storedCustomLayouts = null) {
       return { ok: false, status: 404, text: async () => '', json: async () => ({}) };
     }
   };
-  const { VirtualKeyboard: api } = await import(`../virtual-keyboard.js?t=${++loadCount}`);
-  assert(api && api._internal, 'virtual-keyboard.js did not export VirtualKeyboard._internal');
+  const { ShawKeys: api } = await import(`../shaw-keys.js?t=${++loadCount}`);
+  assert(api && api._internal, 'shaw-keys.js did not export ShawKeys._internal');
   return { api, internal: api._internal, titleEl, fetched };
 }
 
@@ -150,14 +150,14 @@ async function withMissingLayoutFile(layoutId, fn) {
   try { await fn(); } finally { globalThis.fetch = realFetch; }
 }
 
-// The settings mount's container: the picker looks up #vk-layout-list inside it,
-// and pickerMount walks back up to the [data-vk-group] host.
+// The settings mount's container: the picker looks up #sk-layout-list inside it,
+// and pickerMount walks back up to the [data-sk-group] host.
 function pickerContainerStub() {
   const list = stubElement('div');
   const container = stubElement('div');
-  container.querySelector = (sel) => (sel === '#vk-layout-list' ? list : null);
-  list.closest = (sel) => (sel === '[data-vk-group]' ? container : null);
-  container.closest = (sel) => (sel === '[data-vk-group]' ? container : null);
+  container.querySelector = (sel) => (sel === '#sk-layout-list' ? list : null);
+  list.closest = (sel) => (sel === '[data-sk-group]' ? container : null);
+  container.closest = (sel) => (sel === '[data-sk-group]' ? container : null);
   return container;
 }
 
@@ -193,7 +193,7 @@ await check('built-in layouts carry the custom-layout metadata shape', async () 
 // --- the reported defect ---------------------------------------------------
 
 await check('the reported case: the title bar shows the name, never the id', async () => {
-  const { internal, titleEl } = await loadVirtualKeyboard();
+  const { internal, titleEl } = await loadShawKeys();
   await internal.preloadBuiltInLayouts();
   for (const [id, expected] of Object.entries(EXPECTED_NAMES)) {
     titleEl.textContent = '';
@@ -204,7 +204,7 @@ await check('the reported case: the title bar shows the name, never the id', asy
 });
 
 await check('the title bar keeps the name when Shift is held', async () => {
-  const { api, internal, titleEl } = await loadVirtualKeyboard();
+  const { api, internal, titleEl } = await loadShawKeys();
   await internal.preloadBuiltInLayouts();
   internal.updateKeyboardLabels({}, 'igc', { keys: {} });
   assert(!titleEl.textContent.includes('igc'),
@@ -216,7 +216,7 @@ await check('the title bar keeps the name when Shift is held', async () => {
 // --- one resolver, so no surface can drift from another --------------------
 
 await check('the title bar and the settings picker agree on every name', async () => {
-  const { internal, titleEl } = await loadVirtualKeyboard();
+  const { internal, titleEl } = await loadShawKeys();
   await internal.preloadBuiltInLayouts();
   for (const { id, displayName } of internal.listBuiltInLayouts()) {
     titleEl.textContent = '';
@@ -232,7 +232,7 @@ await check('the title bar and the settings picker agree on every name', async (
 const EXPECTED_MENU_ORDER = ['imperial', 'igc', 'qwerty', '2layer', 'jafl'];
 
 await check('the settings picker lists the names, in menu order', async () => {
-  const { internal } = await loadVirtualKeyboard();
+  const { internal } = await loadShawKeys();
   await internal.preloadBuiltInLayouts();
   const listed = internal.listBuiltInLayouts();
   assert(listed.length === 5, `expected 5 built-ins, got ${listed.length}`);
@@ -249,9 +249,9 @@ await check('the settings picker lists the names, in menu order', async () => {
 
 // The layouts carry the Shavian names themselves, so a Shavian UI names every
 // built-in with no translation key involved. The names were transcribed from the
-// retired vkLayout* keys, so this also guards against a lossy transcription.
+// retired skLayout* keys, so this also guards against a lossy transcription.
 await check('a Shavian UI names every built-in from the layouts themselves', async () => {
-  const { api, internal } = await loadVirtualKeyboard();
+  const { api, internal } = await loadShawKeys();
   await internal.preloadBuiltInLayouts();
   await api.setScript('shavian', 'british');
   for (const { id, displayName } of internal.listBuiltInLayouts()) {
@@ -262,21 +262,21 @@ await check('a Shavian UI names every built-in from the layouts themselves', asy
 
 // The retired keys must not come back: a regenerated table carrying them again
 // would reinstate the second copy of every name that FIX 1 removed.
-await check('the retired vkLayout* name keys are gone from every shipped table', async () => {
-  const retired = ['vkLayoutImperial', 'vkLayoutIgc', 'vkLayoutQwerty', 'vkLayout2layer', 'vkLayoutJafl'];
+await check('the retired skLayout* name keys are gone from every shipped table', async () => {
+  const retired = ['skLayoutImperial', 'skLayoutIgc', 'skLayoutQwerty', 'skLayout2layer', 'skLayoutJafl'];
   for (const file of ['translations_latin.json', 'translations_british.json', 'translations_american.json']) {
     const table = JSON.parse(readFileSync(new URL(file, REPO), 'utf8'));
     for (const key of retired) {
       assert(!(key in table), `${file} still carries the retired ${key}`);
     }
-    assert('vkDescImperial' in table, `${file} lost vkDescImperial — descriptions stay in the tables`);
+    assert('skDescImperial' in table, `${file} lost skDescImperial — descriptions stay in the tables`);
   }
 });
 
 // A sentinel no oracle could produce: proves the Shavian name is DERIVED from the
 // loaded layout, not from a table or a switch that happens to know the right five.
 await check("a layout's own Shavian name is what reaches the screen", async () => {
-  const { api, internal, titleEl } = await loadVirtualKeyboard();
+  const { api, internal, titleEl } = await loadShawKeys();
   await internal.preloadBuiltInLayouts();
   await api.setScript('shavian', 'british');
   const ownShavian = '𐑑𐑧𐑕𐑑 𐑖𐑨𐑝𐑰𐑩𐑯';
@@ -293,7 +293,7 @@ await check("a layout's own Shavian name is what reaches the screen", async () =
 // other Latin assertion compares against the five real names, which such a switch
 // reproduces exactly. A sentinel can only come from the layout.
 await check("a layout's own Latin name is what reaches the screen", async () => {
-  const { internal, titleEl } = await loadVirtualKeyboard();
+  const { internal, titleEl } = await loadShawKeys();
   await internal.preloadBuiltInLayouts();
   const sentinel = 'Sentinel Latin Name';
   const layout = await internal.getKeyboardLayoutData('imperial');
@@ -331,7 +331,7 @@ const CUSTOM_LAYOUTS_WITH_AND_WITHOUT_SHAVIAN = {
 };
 
 await check('a blank Shavian name falls back to the Latin one, not to nothing', async () => {
-  const { api, internal, titleEl } = await loadVirtualKeyboard(CUSTOM_LAYOUTS_WITH_AND_WITHOUT_SHAVIAN);
+  const { api, internal, titleEl } = await loadShawKeys(CUSTOM_LAYOUTS_WITH_AND_WITHOUT_SHAVIAN);
   await internal.preloadBuiltInLayouts();
   await api.setScript('shavian', 'british');
 
@@ -350,9 +350,9 @@ await check('a blank Shavian name falls back to the Latin one, not to nothing', 
 });
 
 await check('the layout name is used when no translation carries that key', async () => {
-  const { api, internal, titleEl } = await loadVirtualKeyboard();
+  const { api, internal, titleEl } = await loadShawKeys();
   await internal.preloadBuiltInLayouts();
-  api.setUiStrings({ vkDialogTitle: 'unrelated' });
+  api.setUiStrings({ skDialogTitle: 'unrelated' });
   titleEl.textContent = '';
   internal.updateKeyboardLabels({}, 'jafl', { keys: {} });
   assert(titleEl.textContent === 'Shaw-JAFL',
@@ -362,12 +362,12 @@ await check('the layout name is used when no translation carries that key', asyn
 // --- production loads the layouts itself, on a COLD cache ------------------
 
 // Every other test preloads by hand, so they prove the preload WORKS, never that
-// the mount seam CALLS it. Deleting the await from loadVirtualKeyboardSettingsHTML
+// the mount seam CALLS it. Deleting the await from loadShawKeysSettingsHTML
 // passes them all. This drives the real seam with nothing cached: the naming path
 // is synchronous, so if production doesn't load the layouts first, it cannot name
 // a single row.
 await check('the settings mount loads the layouts itself, with a cold cache', async () => {
-  const { internal, fetched } = await loadVirtualKeyboard();
+  const { internal, fetched } = await loadShawKeys();
   // Confirm the cache really is cold, or the rest of this proves nothing.
   let namedWhileCold = true;
   try { internal.listBuiltInLayouts(); } catch { namedWhileCold = false; }
@@ -389,7 +389,7 @@ await check('the settings mount loads the layouts itself, with a cold cache', as
 // Clearing the whole cache must not brick naming: the documented no-argument form
 // is what an open picker's host calls after a bulk custom-layout change.
 await check('invalidateLayoutCache() leaves every built-in nameable', async () => {
-  const { internal } = await loadVirtualKeyboard();
+  const { internal } = await loadShawKeys();
   await internal.preloadBuiltInLayouts();
   internal.invalidateLayoutCache();
   for (const { id, displayName } of internal.listBuiltInLayouts()) {
@@ -402,7 +402,7 @@ await check('invalidateLayoutCache() leaves every built-in nameable', async () =
 // Evicting one built-in bricks naming just as thoroughly as evicting all five,
 // and the editor calls this form with whatever id it just saved.
 await check('invalidateLayoutCache(id) leaves a built-in nameable', async () => {
-  const { internal } = await loadVirtualKeyboard();
+  const { internal } = await loadShawKeys();
   await internal.preloadBuiltInLayouts();
   internal.invalidateLayoutCache('igc');
   assert(internal.layoutDisplayName('igc') === EXPECTED_NAMES.igc,
@@ -413,7 +413,7 @@ await check('invalidateLayoutCache(id) leaves a built-in nameable', async () => 
 // the exemption above would pass just as well if the function had no body. The
 // resolver counts its calls: a cache hit never reaches it, an eviction does.
 await check('invalidateLayoutCache(id) still evicts a custom layout', async () => {
-  const { internal } = await loadVirtualKeyboard();
+  const { internal } = await loadShawKeys();
   let resolveCount = 0;
   internal.setCustomLayoutResolver((id) => { resolveCount++; return { keys: {} }; }, () => 'Name');
   await internal.getKeyboardLayoutData('custom:evictable');
@@ -432,7 +432,7 @@ await check('invalidateLayoutCache(id) still evicts a custom layout', async () =
 // catch logged "Error loading keyboard settings HTML", and the user got a
 // settings panel that never rendered — no visible error, one missing file.
 await check('a missing built-in layout file makes the preload fail loudly', async () => {
-  const { internal } = await loadVirtualKeyboard();
+  const { internal } = await loadShawKeys();
   await withMissingLayoutFile('qwerty', async () => {
     await assertRejects(async () => internal.preloadBuiltInLayouts(),
       'the preload resolved with a built-in absent — a 404 must not resolve successfully');
@@ -442,7 +442,7 @@ await check('a missing built-in layout file makes the preload fail loudly', asyn
 // The failure must name the file that is missing, or the log leaves whoever
 // reads it no better off than the silent blank panel did.
 await check('the preload failure names the built-in that is missing', async () => {
-  const { internal } = await loadVirtualKeyboard();
+  const { internal } = await loadShawKeys();
   await withMissingLayoutFile('qwerty', async () => {
     let message = '';
     try { await internal.preloadBuiltInLayouts(); } catch (e) { message = e.message; }
@@ -454,13 +454,13 @@ await check('the preload failure names the built-in that is missing', async () =
 // --- a nameless layout fails loudly rather than showing an id --------------
 
 await check('a layout with no displayName raises, rather than rendering its id', async () => {
-  const { internal } = await loadVirtualKeyboard();
+  const { internal } = await loadShawKeys();
   await assertRejects(async () => internal.layoutDisplayName('spill'),
     'a nameless layout must raise — falling back to the id is the defect being fixed');
 });
 
 await check('an unresolvable custom layout raises, rather than rendering its id', async () => {
-  const { internal } = await loadVirtualKeyboard();
+  const { internal } = await loadShawKeys();
   await assertRejects(async () => internal.layoutDisplayName('custom:no-such-layout'),
     'an unknown custom id must raise rather than reaching the screen as an id');
 });
@@ -470,7 +470,7 @@ await check('an unresolvable custom layout raises, rather than rendering its id'
 // `typeof === 'string'` assertion. Both routes must refuse it, or the same
 // fault degrades two different ways.
 await check('a whitespace-only built-in name raises, rather than blanking the title', async () => {
-  const { internal } = await loadVirtualKeyboard();
+  const { internal } = await loadShawKeys();
   await internal.preloadBuiltInLayouts();
   (await internal.getKeyboardLayoutData('igc')).displayName = '   ';
   await assertRejects(async () => internal.layoutDisplayName('igc'),
@@ -481,7 +481,7 @@ await check('a whitespace-only built-in name raises, rather than blanking the ti
 // it and writes on regardless puts the blank title bar back with no error, so
 // drive the real seam and require the sentinel to survive.
 await check('a retitle refuses a whitespace-only name rather than emptying the title', async () => {
-  const { api, internal, titleEl } = await loadVirtualKeyboard();
+  const { api, internal, titleEl } = await loadShawKeys();
   await internal.preloadBuiltInLayouts();
   await api.setLayout('igc');
   (await internal.getKeyboardLayoutData('igc')).displayName = '   ';
@@ -493,7 +493,7 @@ await check('a retitle refuses a whitespace-only name rather than emptying the t
 });
 
 await check('a whitespace-only custom name raises, like the built-in route', async () => {
-  const { internal } = await loadVirtualKeyboard();
+  const { internal } = await loadShawKeys();
   internal.setCustomLayoutResolver(() => ({ keys: {} }), () => '   ');
   await assertRejects(async () => internal.layoutDisplayName('custom:whitespace-name'),
     'a whitespace-only custom name must raise, exactly as the built-in route does');
@@ -503,7 +503,7 @@ await check('a whitespace-only custom name raises, like the built-in route', asy
 // so it WINS over a perfectly good Latin name and empties the title in a Shavian
 // UI. It must fall back to Latin, as a blank one already does.
 await check('a whitespace-only Shavian name falls back to the Latin one', async () => {
-  const { api, internal } = await loadVirtualKeyboard();
+  const { api, internal } = await loadShawKeys();
   await internal.preloadBuiltInLayouts();
   await api.setScript('shavian', 'british');
   (await internal.getKeyboardLayoutData('igc')).shavianDisplayName = '   ';

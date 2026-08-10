@@ -1,22 +1,22 @@
-// Visual keyboard-layout editor. Part of the virtual-keyboard library.
+// Visual keyboard-layout editor. Part of the Shaw Keys library.
 //
 // Lets the user rebind keys and edit ligatures by typing, then persists a
 // validated bare layout ({ keys, ligatures }) through the
 // library's own CustomLayouts store. It resolves everything it needs from the
 // library directly — the current layout, the built-in registry, the keyboard
 // template to clone, the ligature engine — so it carries no host callbacks. When
-// its layout set changes it fires VirtualKeyboard's onLayoutsChanged event; the
+// its layout set changes it fires ShawKeys's onLayoutsChanged event; the
 // host (the game) reacts by repopulating selectors and re-applying if the active
 // layout moved.
 //
 // An ES module: its internals (state, el, byId, open/close, …) stay private to
 // module scope, so the IIFE this file used to need is gone.
-import { VirtualKeyboard } from './virtual-keyboard.js';
+import { ShawKeys } from './shaw-keys.js';
 import { CustomLayouts } from './custom-layouts.js';
 
 // ---------------------------------------------------------------------------
 // Physical keyboard the editor draws. Rather than maintain its own grid, the
-// editor CLONES the live on-screen keyboard markup (#virtualKeyboard
+// editor CLONES the live on-screen keyboard markup (#shawKeys
 // .keyboard-body) so its styling, per-key widths, row stagger and imperial-vs-
 // compact structure match the layout being cloned exactly. renderKeyboard walks
 // the clone's .key[data-key] nodes and attaches the editor's binding behaviour.
@@ -30,7 +30,7 @@ import { CustomLayouts } from './custom-layouts.js';
 // ---------------------------------------------------------------------------
 const SHIFT_KEY_TOKEN = 'Shift';  // matches on-screen keyboard's data-key="Shift"
 
-// data-key values of the non-bindable modifier caps in virtual-keyboard.html.
+// data-key values of the non-bindable modifier caps in shaw-keys.html.
 // They are kept in the clone (present-but-disabled) purely for correct stagger;
 // Shift is handled separately (it toggles the layer), so it is not listed here.
 const SPECIAL_KEYS = new Set(['Tab', 'CapsLock', 'Enter', 'Backspace']);
@@ -105,7 +105,7 @@ const state = {
     // name edit), cleared on load and after a successful save. Drives the header's
     // "unsaved changes" note and the Back/close dirty check.
     dirty: false,
-    // Host container the editor renders into (VIEW 2 of the vk dialog) and the
+    // Host container the editor renders into (VIEW 2 of the Shaw Keys dialog) and the
     // callback that returns the dialog to VIEW 1 (roster). Supplied by open().
     host: null,
     onExit: null,
@@ -161,7 +161,7 @@ function byId(id) {
 
 // ---------------------------------------------------------------------------
 // Library access. The editor is library code: it resolves everything it needs
-// from VirtualKeyboard / CustomLayouts directly, rather than
+// from ShawKeys / CustomLayouts directly, rather than
 // through injected host callbacks.
 // ---------------------------------------------------------------------------
 
@@ -175,37 +175,37 @@ function setTemplateSource(fn) {
 }
 
 // The keyboard body to clone: the test override if set, else the live
-// #virtualKeyboard .keyboard-body the library rendered in init.
+// #shawKeys .keyboard-body the library rendered in init.
 function getTemplate() {
     return templateSource
         ? templateSource()
-        : document.querySelector('#virtualKeyboard .keyboard-body');
+        : document.querySelector('#shawKeys .keyboard-body');
 }
 
 // Resolve any layout id (built-in or custom:) to its bare layout data.
 function getLayoutData(id) {
-    return VirtualKeyboard._internal.getKeyboardLayoutData(id);
+    return ShawKeys._internal.getKeyboardLayoutData(id);
 }
 
 // ---------------------------------------------------------------------------
-// The vk-as-glyph-picker. The editor re-shows the library's own on-screen
+// The sk-as-glyph-picker. The editor re-shows the library's own on-screen
 // keyboard and repoints tapped keys at #leGlyphInput, so a user without a
 // Shavian keyboard can tap glyphs to bind them. Library-owned and ALWAYS
-// offered (no host show-vk gate — this is the editor's keyboard, not the game's
-// vk preference). Shown on open and toggled by Cmd/Ctrl+K thereafter; it doubles
+// offered (no host show-keyboard gate — this is the editor's keyboard, not the game's
+// keyboard preference). Shown on open and toggled by Cmd/Ctrl+K thereafter; it doubles
 // as a live preview of the layout under edit, which the popup palette is not.
 //
 // GAME SAFETY: setupPicker keyboard-enables the editor's own inputs;
-// teardownPicker MUST release them on EVERY close path so the game's vk is never
+// teardownPicker MUST release them on EVERY close path so the game keyboard is never
 // left inserting into a dialog that has gone away. teardownPicker is called
 // unconditionally by close().
 // ---------------------------------------------------------------------------
-// Where #virtualKeyboard normally lives, so teardownPicker can put it back. A
+// Where #shawKeys normally lives, so teardownPicker can put it back. A
 // top-layer <dialog> (showModal) and its ::backdrop paint above ALL normal-flow
-// z-index, so the vk left in <body> gets dimmed by the editor's backdrop. Moving
+// z-index, so the keyboard left in <body> gets dimmed by the editor's backdrop. Moving
 // it INTO the dialog subtree makes it a top-layer descendant, above ::backdrop.
-let pickerVkHomeParent = null;
-let pickerVkHomeNext = null;
+let pickerKeysHomeParent = null;
+let pickerKeysHomeNext = null;
 
 // Detaches the library's keystroke interception from #leGlyphInput.
 let stopInterception = null;
@@ -214,20 +214,20 @@ let stopInterception = null;
 let stopMetadataInterception = [];
 
 function promoteVkAboveBackdrop() {
-    const vk = document.getElementById('virtualKeyboard');
-    const dialog = document.getElementById('vk-settings-dialog');
-    if (!vk || !dialog || vk.parentNode === dialog) return;   // no top-layer dialog (extension), or already promoted
-    pickerVkHomeParent = vk.parentNode;
-    pickerVkHomeNext = vk.nextSibling;
-    dialog.appendChild(vk);
+    const keys = document.getElementById('shawKeys');
+    const dialog = document.getElementById('sk-settings-dialog');
+    if (!keys || !dialog || keys.parentNode === dialog) return;   // no top-layer dialog (extension), or already promoted
+    pickerKeysHomeParent = keys.parentNode;
+    pickerKeysHomeNext = keys.nextSibling;
+    dialog.appendChild(keys);
 }
 
 function restoreVkHome() {
-    if (!pickerVkHomeParent) return;
-    const vk = document.getElementById('virtualKeyboard');
-    if (vk) pickerVkHomeParent.insertBefore(vk, pickerVkHomeNext);
-    pickerVkHomeParent = null;
-    pickerVkHomeNext = null;
+    if (!pickerKeysHomeParent) return;
+    const keys = document.getElementById('shawKeys');
+    if (keys) pickerKeysHomeParent.insertBefore(keys, pickerKeysHomeNext);
+    pickerKeysHomeParent = null;
+    pickerKeysHomeNext = null;
 }
 
 // Point the library's keyboard at the editor's input and lift it above the
@@ -243,33 +243,33 @@ function pickerFoldLigatures() {
 }
 
 function setupPicker() {
-    const vk = VirtualKeyboard;
-    vk.setFoldLigatures(pickerFoldLigatures);
+    const keys = ShawKeys;
+    keys.setFoldLigatures(pickerFoldLigatures);
     // Keyboard-enable the glyph input: physical typing gets latin->glyph
     // translation and folding against that same table (so typed and tapped
     // components fold alike), and tapped keys reach it while it holds focus.
     // Registration, not a pinned destination — the metadata fields below are
     // keyboard-enabled too, and taps must follow whichever the user is in.
-    stopInterception = vk.enableInterception(byId('leGlyphInput'));
+    stopInterception = keys.enableInterception(byId('leGlyphInput'));
     stopMetadataInterception = KEYBOARD_ENABLED_METADATA_INPUTS.map(
-        (id) => vk.enableInterception(byId(id))
+        (id) => keys.enableInterception(byId(id))
     );
     document.body.classList.add('le-picker-open');
     promoteVkAboveBackdrop();
 }
 
 function teardownPicker() {
-    const vk = VirtualKeyboard;
+    const keys = ShawKeys;
     if (stopInterception) {   // close() also runs on a dialog never opened into the editor
         stopInterception();
         stopInterception = null;
     }
     stopMetadataInterception.forEach((stop) => stop());
     stopMetadataInterception = [];
-    vk.setFoldLigatures(null);          // game safety: back to the active layout's ligatures
+    keys.setFoldLigatures(null);          // game safety: back to the active layout's ligatures
     restoreVkHome();
     document.body.classList.remove('le-picker-open');
-    vk.hide();                          // returning to the settings modal, which hides the vk
+    keys.hide();                          // returning to the settings modal, which hides the keyboard
 }
 
 // ---------------------------------------------------------------------------
@@ -317,12 +317,12 @@ function focusedTargetEl() {
 // runs inside one (so a top-layer dialog's ::backdrop can't cover it), else the
 // body. Positioning is viewport-fixed either way.
 function paletteContainer() {
-    return byId('vk-settings-dialog') || document.body;
+    return byId('sk-settings-dialog') || document.body;
 }
 
 function buildPaletteEl() {
     const grid = el('div', { class: 'le-palette', role: 'group',
-        'aria-label': t('vkEditorPaletteLabel', 'Choose a glyph') });
+        'aria-label': t('skEditorPaletteLabel', 'Choose a glyph') });
     grid.style.setProperty('--le-palette-columns', String(PALETTE_COLUMNS));
     const glyphBtn = glyph => el('button', {
         class: 'le-palette-glyph', type: 'button', text: glyph,
@@ -413,33 +413,33 @@ function pickGlyph(glyph) {
 // ---------------------------------------------------------------------------
 
 // Whether the editor markup has been fetched + injected into the host yet. The
-// host is view 2 of the vk dialog, created once per page; the editor injects its
+// host is view 2 of the Shaw Keys dialog, created once per page; the editor injects its
 // markup there on first open.
 let markupInjected = false;
 
-// Fetch layout-editor.html and inject it into `hostEl` (view 2 of the vk
+// Fetch layout-editor.html and inject it into `hostEl` (view 2 of the Shaw Keys
 // dialog), via getResourceUrl so the path resolves under a host's resolver
 // (extension). Idempotent — injects at most once; later opens reuse the markup.
 async function ensureMarkup(hostEl) {
     if (markupInjected) {
         return;
     }
-    const vk = VirtualKeyboard;
-    const url = vk._internal.getResourceUrl('layout-editor.html');
+    const keys = ShawKeys;
+    const url = keys._internal.getResourceUrl('layout-editor.html');
     const response = await fetch(url);
     if (!response.ok) {
         throw new Error(`Layout editor: could not load markup (${url}): ${response.status}`);
     }
     hostEl.innerHTML = await response.text();
-    vk._internal.applyUiStrings(hostEl);   // static data-i18n chrome
+    keys._internal.applyUiStrings(hostEl);   // static data-i18n chrome
     markupInjected = true;
 }
 
 // Open the editor LOCKED to `startId` (the custom to edit in place). `opts.host`
-// is the container to render into (view 2 of the vk dialog); `opts.onExit`
+// is the container to render into (view 2 of the Shaw Keys dialog); `opts.onExit`
 // returns the dialog to view 1 (roster) — the editor calls it from back()/save().
 // Injects the markup on first open, resolves the active layout's input map, loads
-// the layout, then shows the vk as a glyph picker. No base picker: new-from-clone
+// the layout, then shows the keyboard as a glyph picker. No base picker: new-from-clone
 // is a roster action, so the editor only ever edits one existing custom.
 async function open(startId, opts) {
     const options = opts || {};
@@ -476,12 +476,12 @@ async function open(startId, opts) {
     // the caps being edited, and the palette is the primary input path. Cmd/Ctrl+K
     // brings it in for anyone who wants it (screen space, a physical keyboard).
     setupPicker();
-    VirtualKeyboard.hide();
+    ShawKeys.hide();
 }
 
 // Tear the editor down. Called on EVERY close/exit path (back, save, dialog
 // close) so the shared listeners + the glyph picker are always released — game
-// safety: the vk's destination must never be left pointing at the editor input.
+// safety: the keyboard's destination must never be left pointing at the editor input.
 // Detaches listeners, re-parks the editable input, and tears down the picker
 // unconditionally. Does NOT touch view visibility — the dialog controller owns
 // which view shows.
@@ -593,7 +593,7 @@ function onNameInput(ev) {
 // `maxlength`'s UTF-16 units, so a Shavian name (surrogate pairs, VS1 clusters)
 // gets the same number of LETTERS as a Latin one rather than half.
 function capNameInput(input) {
-    const cap = VirtualKeyboard._internal.NAME_CAP_GRAPHEMES;
+    const cap = ShawKeys._internal.NAME_CAP_GRAPHEMES;
     const graphemes = toGraphemes(input.value);
     if (graphemes.length <= cap) {
         return;
@@ -681,12 +681,12 @@ function renderLayerButtons() {
 
 // Shorthand for the library's UI-string resolver (active script, Latin fallback).
 function t(key, fallback, vars) {
-    return VirtualKeyboard._internal.vkString(key, fallback, vars);
+    return ShawKeys._internal.skString(key, fallback, vars);
 }
 
-// Shorthand for the library's grapheme splitter (see virtual-keyboard.js).
+// Shorthand for the library's grapheme splitter (see shaw-keys.js).
 function toGraphemes(text) {
-    return VirtualKeyboard._internal.toGraphemes(text);
+    return ShawKeys._internal.toGraphemes(text);
 }
 
 // Header line: "Editing: <name>[ · unsaved changes]". The name tracks the live
@@ -699,13 +699,13 @@ function renderEditingLine() {
     }
     const latin = byId('layoutEditorName');
     const shavian = byId('layoutEditorShavianName');
-    const name = VirtualKeyboard._internal.preferredScriptLabel(
+    const name = ShawKeys._internal.preferredScriptLabel(
         (latin && latin.value.trim()) || '',
         (shavian && shavian.value.trim()) || ''
-    ) || t('vkEditorUntitled', 'untitled');
-    let text = t('vkEditorEditingLine', 'Editing: {{name}}', { name: name });
+    ) || t('skEditorUntitled', 'untitled');
+    let text = t('skEditorEditingLine', 'Editing: {{name}}', { name: name });
     if (state.dirty) {
-        text += ' ' + t('vkEditorUnsaved', '· unsaved changes');
+        text += ' ' + t('skEditorUnsaved', '· unsaved changes');
     }
     line.textContent = text;
     line.classList.toggle('le-dirty', state.dirty);
@@ -726,19 +726,19 @@ function renderCoverage() {
     }
     const cov = CustomLayouts.coverage(buildBareLayout());
     const vs1Note = cov.vs1Optional.produced > 0
-        ? ' ' + t('vkCovVs1Suffix', '· +{{n}} optional VS1', { n: cov.vs1Optional.produced })
+        ? ' ' + t('skCovVs1Suffix', '· +{{n}} optional VS1', { n: cov.vs1Optional.produced })
         : '';
     if (cov.missing.length === 0) {
-        line.textContent = t('vkCovAllCharsVs1', '✓ all {{n}} characters{{vs1}}',
+        line.textContent = t('skCovAllCharsVs1', '✓ all {{n}} characters{{vs1}}',
             { n: cov.required, vs1: vs1Note });
         line.className = 'le-coverage le-coverage-ok';
         return;
     }
     const named = cov.missing.slice(0, COVERAGE_NAMED_MISSING_CAP).join(' ');
     const more = cov.missing.length > COVERAGE_NAMED_MISSING_CAP
-        ? ' ' + t('vkCovMoreSuffix', '+{{n}} more', { n: cov.missing.length - COVERAGE_NAMED_MISSING_CAP })
+        ? ' ' + t('skCovMoreSuffix', '+{{n}} more', { n: cov.missing.length - COVERAGE_NAMED_MISSING_CAP })
         : '';
-    line.textContent = t('vkCovMissingLine', '⚠ {{count}} of {{total}} missing: {{glyphs}}{{more}}{{vs1}}',
+    line.textContent = t('skCovMissingLine', '⚠ {{count}} of {{total}} missing: {{glyphs}}{{more}}{{vs1}}',
         { count: cov.missing.length, total: cov.required, glyphs: named, more: more, vs1: vs1Note });
     line.className = 'le-coverage le-coverage-warn';
 }
@@ -748,7 +748,7 @@ function renderCoverage() {
 // static data-i18n chrome and re-renders the string-built dynamic lines.
 function refreshStrings() {
     if (!markupInjected) return;
-    VirtualKeyboard._internal.applyUiStrings(document.getElementById('layoutEditorModal'));
+    ShawKeys._internal.applyUiStrings(document.getElementById('layoutEditorModal'));
     renderEditingLine();
     renderCoverage();
 }
@@ -756,7 +756,7 @@ function refreshStrings() {
 // Back to view 1 (roster) with a dirty check — an accidental Back must not drop
 // unsaved edits. Confirms when dirty, then tears down and returns via onExit.
 function back() {
-    if (state.dirty && !window.confirm(t('vkConfirmDiscard', 'Discard unsaved changes and go back?'))) {
+    if (state.dirty && !window.confirm(t('skConfirmDiscard', 'Discard unsaved changes and go back?'))) {
         return;
     }
     close();
@@ -783,7 +783,7 @@ function requireSavedLayout() {
 
 function download() {
     const id = requireSavedLayout();
-    if (id) VirtualKeyboard._internal.downloadCustomLayout(id);
+    if (id) ShawKeys._internal.downloadCustomLayout(id);
 }
 
 async function remove() {
@@ -793,7 +793,7 @@ async function remove() {
     // Await the delete: when the deleted layout was active it applies the host
     // default and notifies BEFORE resolving, so the onExit re-render (showPickerView)
     // below sees the settled fallback layout, not an empty selection.
-    await VirtualKeyboard._internal.deleteCustomLayout(id);
+    await ShawKeys._internal.deleteCustomLayout(id);
     // deleteCustomLayout confirms + deletes; if the record is now gone, leave.
     if (before && !CustomLayouts.getCustomLayout(id)) {
         close();
@@ -806,7 +806,7 @@ async function remove() {
 // to focus it, then TYPE its glyph to fill the target — typing is the ONLY way to
 // bind (the drag palette was removed). The focused target hosts the ORDINARY
 // editable #leGlyphInput (see open()) and the browser/OS/IME owns everything that
-// happens in it: composition, selection, autocorrect, undo, the on-screen vk's
+// happens in it: composition, selection, autocorrect, undo, the on-screen keyboard's
 // insertions. We neither observe nor rewrite keystrokes — that interference is
 // what split an IME-composed ligature into two glyphs.
 //
@@ -1007,7 +1007,7 @@ function bindableKeyTokens() {
     const template = getTemplate();
     if (!template) {
         throw new Error('Layout editor: keyboard template unavailable ' +
-            '(no #virtualKeyboard .keyboard-body).');
+            '(no #shawKeys .keyboard-body).');
     }
     const tokens = [];
     for (const keyEl of template.querySelectorAll('.key[data-key]')) {
@@ -1148,7 +1148,7 @@ function renderKeyboard() {
         // nothing sensible to draw. Fail loud rather than fall back to an empty
         // or hardcoded grid, which would mask a missing-keyboard bug.
         throw new Error('Layout editor: keyboard template unavailable ' +
-            '(no #virtualKeyboard .keyboard-body).');
+            '(no #shawKeys .keyboard-body).');
     }
     const clone = template.cloneNode(true);
     // The template is the LIVE keyboard body, so the clone inherits whatever
@@ -1166,7 +1166,7 @@ function renderKeyboard() {
     // being cloned — so it is the resolver's layoutName directly; a null base
     // (older custom lacking one) resolves to the default 'compact' family.
     const isImperial =
-        VirtualKeyboard._internal.structuralFamilyOf(state.base) === 'imperial';
+        ShawKeys._internal.structuralFamilyOf(state.base) === 'imperial';
     clone.classList.toggle('structure-imperial', isImperial);
 
     // Decorate every real key cap with the editor's binding behaviour.
@@ -1350,8 +1350,8 @@ function makeLigAddEl() {
     }
     return el('button', {
         class: 'le-lig-add', text: '+',
-        title: t('vkEditorAddPair', 'Add a ligature pair'),
-        'aria-label': t('vkEditorAddPair', 'Add a ligature pair'),
+        title: t('skEditorAddPair', 'Add a ligature pair'),
+        'aria-label': t('skEditorAddPair', 'Add a ligature pair'),
         onclick: addLigRow,
     });
 }
@@ -1529,7 +1529,7 @@ function save() {
 // slug so the editor can switch into edit-in-place mode.
 async function persist(bare, metadata, slug) {
     const CL = CustomLayouts;
-    const vk = VirtualKeyboard;
+    const keys = ShawKeys;
     let record;
     if (slug) {
         const existing = CL.getCustomLayout(slug);
@@ -1543,9 +1543,9 @@ async function persist(bare, metadata, slug) {
     CL.saveCustomLayout(record);
 
     const savedId = CL.CUSTOM_ID_PREFIX + record.name;
-    vk._internal.invalidateLayoutCache(savedId);
-    const activeChanged = vk.getLayout() === savedId;
-    vk._internal.notifyLayoutsChanged({ activeChanged: activeChanged });
+    keys._internal.invalidateLayoutCache(savedId);
+    const activeChanged = keys.getLayout() === savedId;
+    keys._internal.notifyLayoutsChanged({ activeChanged: activeChanged });
     return record.name;
 }
 
@@ -1595,6 +1595,6 @@ export const LayoutEditor = {
 export { SHAVIAN_PALETTE };
 
 // Transition surface: the consumers still reach the library through globals.
-// Delete these three assignments (here, virtual-keyboard.js and
+// Delete these three assignments (here, shaw-keys.js and
 // custom-layouts.js) once every consumer imports instead.
 window.LayoutEditor = LayoutEditor;

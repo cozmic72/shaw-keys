@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Substitute {{FONT_URL}} in a staged copy of virtual-keyboard.css, then verify
+# Substitute {{FONT_URL}} in a staged copy of shaw-keys.css, then verify
 # no token survived.
 #
 #   tools/substitute-font-url.sh URL FILE...

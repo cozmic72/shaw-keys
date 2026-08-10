@@ -1,19 +1,19 @@
-/* Layout-editor styling. Ships with the virtual-keyboard library (loaded via a
-   <link> alongside virtual-keyboard.css), so the editor exports whole to any
+/* Layout-editor styling. Ships with the Shaw Keys library (loaded via a
+   <link> alongside shaw-keys.css), so the editor exports whole to any
    host / the browser extension. Markup: layout-editor.html; behaviour:
    layout-editor.js. Rules are scoped to #layoutEditorModal / .le-* so they don't
    touch the rest of a host page. */
 
-/* Editor glyph-picker: lift the vk above the editor's own content while open.
-   When the editor runs inside the top-layer #vk-settings-dialog, the picker JS
-   also reparents #virtualKeyboard into that dialog so it paints above the
+/* Editor glyph-picker: lift the keyboard above the editor's own content while open.
+   When the editor runs inside the top-layer #sk-settings-dialog, the picker JS
+   also reparents #shawKeys into that dialog so it paints above the
    ::backdrop (see promoteVkAboveBackdrop); this z-index keeps it above the
    dialog's in-flow content too. Class added/removed by picker open/teardown. */
-body.le-picker-open #virtualKeyboard {
+body.le-picker-open #shawKeys {
     z-index: 2100;
 }
 
-/* The editor is VIEW 2 of the vk settings dialog (#vk-view-editor), not its own
+/* The editor is VIEW 2 of the Shaw Keys settings dialog (#sk-view-editor), not its own
    overlay. It is a column: header, a scrollable body, then a pinned footer, so
    the footer stays reachable while the body scrolls. The dialog gives the shell
    its width and backdrop. */
@@ -38,11 +38,11 @@ body.le-picker-open #virtualKeyboard {
    note tinted amber when present. */
 .le-editing-line {
     font-size: 0.9em;
-    color: var(--vk-text-meta);
+    color: var(--sk-text-meta);
 }
 
 .le-editing-line.le-dirty {
-    color: var(--vk-dirty);
+    color: var(--sk-dirty);
 }
 
 /* Coverage line: ⚠ amber when incomplete, green ✓ when complete. */
@@ -52,11 +52,11 @@ body.le-picker-open #virtualKeyboard {
 }
 
 .le-coverage-ok {
-    color: var(--vk-coverage-ok);
+    color: var(--sk-coverage-ok);
 }
 
 .le-coverage-warn {
-    color: var(--vk-coverage-warn);
+    color: var(--sk-coverage-warn);
 }
 
 /* Form controls do not inherit font-family, so the UA's system font wins unless
@@ -76,7 +76,7 @@ body.le-picker-open #virtualKeyboard {
    FIXED to the viewport and appended to the dialog (not the scrolling .le-body),
    so the dialog's scroll box can never clip it — layout-editor.js measures the
    room above vs below and positions it on the roomier side. The z-index clears
-   the promoted #virtualKeyboard (2100) so the palette wins when both are up. */
+   the promoted #shawKeys (2100) so the palette wins when both are up. */
 .le-palette {
     position: fixed;
     z-index: 2200;
@@ -86,9 +86,9 @@ body.le-picker-open #virtualKeyboard {
     gap: 4px;
     padding: 8px;
     max-width: calc(100vw - 16px);
-    border: 1px solid var(--vk-border-strong);
+    border: 1px solid var(--sk-border-strong);
     border-radius: 10px;
-    background: var(--vk-surface);
+    background: var(--sk-surface);
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22);
 }
 
@@ -98,14 +98,14 @@ body.le-picker-open #virtualKeyboard {
     padding: 0;
     /* Named here, not on .le-palette: a button does not inherit font-family from
        its container, and the page font lacks the VS1 variants (they'd show as
-       their bare bases). The palette sits outside #virtualKeyboard's font rule. */
+       their bare bases). The palette sits outside #shawKeys's font rule. */
     font-family: 'Inter-Alia', sans-serif;
     font-size: 20px;
     line-height: 1;
-    border: 1px solid var(--vk-border);
+    border: 1px solid var(--sk-border);
     border-radius: 6px;
-    background: var(--vk-surface-raised);
-    color: var(--vk-text);
+    background: var(--sk-surface-raised);
+    color: var(--sk-text);
     cursor: pointer;
 }
 
@@ -119,8 +119,8 @@ body.le-picker-open #virtualKeyboard {
 }
 
 .le-palette-glyph:hover {
-    border-color: var(--vk-accent);
-    background: var(--vk-accent-fill);
+    border-color: var(--sk-accent);
+    background: var(--sk-accent-fill);
 }
 
 .le-controls {
@@ -137,10 +137,10 @@ body.le-picker-open #virtualKeyboard {
 #layoutEditorShavianDescription {
     padding: 7px 8px;
     font-size: 14px;
-    border: 2px solid var(--vk-border);
+    border: 2px solid var(--sk-border);
     border-radius: 8px;
-    background: var(--vk-surface);
-    color: var(--vk-text);
+    background: var(--sk-surface);
+    color: var(--sk-text);
     flex: 1;
     min-width: 120px;
 }
@@ -197,11 +197,11 @@ body.le-picker-open #virtualKeyboard {
    corners, so it reads as joined to the panel it labels. */
 .le-layer-tab {
     border: none;
-    background: var(--vk-surface-sunken);
+    background: var(--sk-surface-sunken);
     padding: 6px 16px;
     font-size: 13px;
     cursor: pointer;
-    color: var(--vk-text-detail);
+    color: var(--sk-text-detail);
     border-radius: 8px 8px 0 0;
 }
 
@@ -270,7 +270,7 @@ body.le-picker-open #virtualKeyboard {
 
 /* The editor deliberately carries NO structure-gating rules of its own. The
    clone is the real .keyboard-body with the real .key / .spacer / .mobile-only /
-   hide-mobile-non-imperial classes, so it obeys virtual-keyboard.css's own rules
+   hide-mobile-non-imperial classes, so it obeys shaw-keys.css's own rules
    for the actual viewport width: on a desktop-width viewport it renders the
    desktop keyboard (number row for every layout, Tab/Caps/Enter present, Shift
    on its own rows); on a narrow viewport the real @media(max-width:768px) block
@@ -287,7 +287,7 @@ body.le-picker-open #virtualKeyboard {
    keys to the wrong aspect. Pin the DESKTOP fixed key sizing (square-key reference)
    so the body takes its natural content width and rows don't reflow. Structure
    gating (which keys show) is untouched — only sizing is pinned. Mirrors the
-   .vk-preview-body pinning in virtual-keyboard.css. */
+   .sk-preview-body pinning in shaw-keys.css. */
 @media (max-width: 768px) {
     .le-keyboard .keyboard-body {
         width: max-content;
@@ -325,7 +325,7 @@ body.le-picker-open #virtualKeyboard {
 
 /* The type-to-fill <input> IS the focused target's editable buffer: the renderer
    moves it into the focused key/slot so its content and the OS's native text
-   caret appear right where the glyph goes, and the vk engine folds the buffer in
+   caret appear right where the glyph goes, and the Shaw Keys engine folds the buffer in
    place. Styled to disappear into the glyph area — transparent, inheriting the
    cap's glyph font/size, centered — so it reads as the key's own legend. When no
    target is focused it's parked (unfocused) but stays in the DOM. */
@@ -377,7 +377,7 @@ body.le-picker-open #virtualKeyboard {
 }
 
 .le-hint {
-    color: var(--vk-text-hint);
+    color: var(--sk-text-hint);
     font-size: 0.82em;
     margin: 6px 0;
 }
@@ -385,7 +385,7 @@ body.le-picker-open #virtualKeyboard {
 .le-section {
     display: block;
     margin: 14px 0 6px;
-    color: var(--vk-text-meta);
+    color: var(--sk-text-meta);
     font-weight: normal;
 }
 
@@ -419,19 +419,19 @@ body.le-picker-open #virtualKeyboard {
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    border: 2px solid var(--vk-border-strong);
+    border: 2px solid var(--sk-border-strong);
     border-radius: 5px;
-    background: var(--vk-surface);
-    color: var(--vk-text);
+    background: var(--sk-surface);
+    color: var(--sk-text);
 }
 
 .le-slot-empty {
     border-style: dashed;
-    background: var(--vk-surface-raised);
+    background: var(--sk-surface-raised);
 }
 
 .le-lig-op {
-    color: var(--vk-text-hint);
+    color: var(--sk-text-hint);
     font-size: 15px;
 }
 
@@ -439,7 +439,7 @@ body.le-picker-open #virtualKeyboard {
     margin-left: 4px;
     border: none;
     background: none;
-    color: var(--vk-danger);
+    color: var(--sk-danger);
     font-size: 15px;
     cursor: pointer;
 }
@@ -455,17 +455,17 @@ body.le-picker-open #virtualKeyboard {
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    border: 2px dashed var(--vk-border-strong);
+    border: 2px dashed var(--sk-border-strong);
     border-radius: 5px;
-    background: var(--vk-surface-raised);
-    color: var(--vk-text-hint);
+    background: var(--sk-surface-raised);
+    color: var(--sk-text-hint);
     cursor: pointer;
     padding: 0;
 }
 
 .le-lig-add:hover {
-    border-color: var(--vk-text-hint);
-    color: var(--vk-text);
+    border-color: var(--sk-text-hint);
+    color: var(--sk-text);
 }
 
 /* Pinned action bar (Back · Save · Done). stretch equalises heights; each flex:1
@@ -477,14 +477,14 @@ body.le-picker-open #virtualKeyboard {
     gap: 6px;
     flex-wrap: wrap;
     align-items: center;
-    border-top: 1px solid var(--vk-border);
+    border-top: 1px solid var(--sk-border);
     padding-top: 10px;
     margin-top: 10px;
 }
 
 .le-manage-label {
     font-size: 13px;
-    color: var(--vk-text-muted);
+    color: var(--sk-text-muted);
     margin-right: 2px;
 }
 
@@ -494,8 +494,8 @@ body.le-picker-open #virtualKeyboard {
 }
 
 .le-manage-danger {
-    color: var(--vk-danger);
-    border-color: var(--vk-danger-border);
+    color: var(--sk-danger);
+    border-color: var(--sk-danger-border);
 }
 
 .le-footer {
@@ -503,7 +503,7 @@ body.le-picker-open #virtualKeyboard {
     gap: 8px;
     flex-wrap: wrap;
     align-items: stretch;
-    border-top: 1px solid var(--vk-border);
+    border-top: 1px solid var(--sk-border);
     padding-top: 12px;
     margin-top: 10px;
 }
@@ -533,13 +533,13 @@ body.le-picker-open #virtualKeyboard {
 .le-btn {
     padding: 8px 12px;
     font-size: 14px;
-    border: 2px solid var(--vk-border);
+    border: 2px solid var(--sk-border);
     border-radius: 8px;
-    background: var(--vk-surface);
-    color: var(--vk-text);
+    background: var(--sk-surface);
+    color: var(--sk-text);
     cursor: pointer;
 }
 
 .le-btn:hover {
-    background: var(--vk-surface-hover);
+    background: var(--sk-surface-hover);
 }

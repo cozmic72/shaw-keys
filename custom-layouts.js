@@ -1,7 +1,7 @@
 // Custom keyboard layouts — user-created, locally stored, and shareable.
 //
 // A custom layout is the same JSON shape as a built-in
-// (src/virtual-keyboard/keyboard_layout_*.json): { keys, ligatures }.
+// (src/shaw-keys/keyboard_layout_*.json): { keys, ligatures }.
 // We wrap that bare layout in a small record carrying a
 // display name and timestamps, store the records in one localStorage blob
 // keyed by slug, and address them app-wide by the id "custom:<slug>".
@@ -12,7 +12,7 @@
 // executed.
 
 import { SHAVIAN_PALETTE } from './layout-editor.js';
-import { getComponentToLigature, formLigatures, isBuiltInLayoutName } from './virtual-keyboard.js';
+import { getComponentToLigature, formLigatures, isBuiltInLayoutName } from './shaw-keys.js';
 
 const CUSTOM_LAYOUTS_KEY = 'customLayouts';
 const CUSTOM_LAYOUT_SCHEMA = 1;
@@ -22,14 +22,14 @@ const CUSTOM_ID_PREFIX = 'custom:';
 // Recognized physical key tokens.
 //
 // These are EXACTLY the tokens a layout's `keys` may bind, derived from what
-// the renderer (updateKeyboardLabels in virtual-keyboard.js) and the scorer
+// the renderer (updateKeyboardLabels in shaw-keys.js) and the scorer
 // (build_reverse_map / SHIFTED_SYMBOL_BASE in tools/kbd_score/score_layout.py)
 // accept: the unshifted character keys plus their shifted forms. Modifier keys
 // (Shift, Tab, Enter, Backspace, CapsLock) carry no binding and are excluded.
 // ---------------------------------------------------------------------------
 
 // Unshifted base keys: digits, the punctuation block, and the space bar. Kept
-// in sync with the data-key set in virtual-keyboard.html.
+// in sync with the data-key set in shaw-keys.html.
 const BASE_PUNCT_KEYS = [
     '`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=',
     '[', ']', '\\', ';', '\'', ',', '.', '/', ' '
@@ -512,6 +512,6 @@ export const CustomLayouts = {
 };
 
 // Transition surface: the consumers still reach the library through globals.
-// Delete these three assignments (here, virtual-keyboard.js and layout-editor.js)
+// Delete these three assignments (here, shaw-keys.js and layout-editor.js)
 // once every consumer imports instead.
 window.CustomLayouts = CustomLayouts;

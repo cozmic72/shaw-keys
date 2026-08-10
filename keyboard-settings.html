@@ -1,45 +1,45 @@
-<!-- Virtual Keyboard Settings — two-view stack inside the one #vk-settings-dialog.
-     View 1 (#vk-view-picker) = the layout picker; view 2 (#vk-view-editor) = the
+<!-- Shaw Keys Settings — two-view stack inside the one #sk-settings-dialog.
+     View 1 (#sk-view-picker) = the layout picker; view 2 (#sk-view-editor) = the
      layout editor, injected by layout-editor.js. The dialog controller
-     (virtual-keyboard.js) swaps which view is visible; the editor renders into
-     #vk-view-editor, never a second modal.
+     (shaw-keys.js) swaps which view is visible; the editor renders into
+     #sk-view-editor, never a second modal.
 
      Round 2: one flat radio list holds BOTH built-in and custom layouts (custom
      rows carry a "custom" chip + an inline ✏️ edit control). The live HTML preview
      (renderLayoutPreview) + a compact description + a ligatures disclosure appear
      INLINE, directly beneath the SELECTED row — no detached side panel. The
      preview keyboard's own ⇧ key flips base⇄shift (no checkbox). Rows are built by
-     renderPickerList() in virtual-keyboard.js; #vk-detail-template is the inline
+     renderPickerList() in shaw-keys.js; #sk-detail-template is the inline
      block cloned under the selected row. -->
-<div id="vk-view-picker" class="vk-view">
-<div class="vk-settings">
-    <h3 data-i18n="vkLayoutHeading">Layout</h3>
+<div id="sk-view-picker" class="sk-view">
+<div class="sk-settings">
+    <h3 data-i18n="skLayoutHeading">Layout</h3>
 
     <!-- Flat radio list: built-in + custom rows, built by renderPickerList(). The
          selected row hosts the inline detail (preview + description + ligatures). -->
-    <div class="vk-layout-list" id="vk-layout-list"></div>
+    <div class="sk-layout-list" id="sk-layout-list"></div>
 
     <!-- One compact create/import affordance below the list. New… opens the
          in-surface base-picker overlay (built by openBasePicker); Import… loads a
          JSON file. No inline base <select> — the clone source is chosen in the overlay. -->
-    <div class="vk-create-bar">
-        <button type="button" class="vk-create-btn" id="vk-create-new" data-i18n="vkNew">New…</button>
-        <button type="button" class="vk-create-btn" id="vk-create-import" data-i18n="vkImport">Import…</button>
-        <input type="file" id="vk-create-file" accept="application/json" style="display: none;">
+    <div class="sk-create-bar">
+        <button type="button" class="sk-create-btn" id="sk-create-new" data-i18n="skNew">New…</button>
+        <button type="button" class="sk-create-btn" id="sk-create-import" data-i18n="skImport">Import…</button>
+        <input type="file" id="sk-create-file" accept="application/json" style="display: none;">
     </div>
 
     <!-- Base-picker overlay: a viewport-level modal (NOT a nested <dialog>.showModal)
-         shown when New… is clicked. openBasePicker fills .vk-base-list with a button
+         shown when New… is clicked. openBasePicker fills .sk-base-list with a button
          per clone source and REPARENTS this element clear of the picker's scroll box
          (see promoteBasePicker) so it is never clipped; closeBasePicker puts it back.
          Picking one clones + opens the editor. Dismissed via backdrop, Cancel, or
          Escape. Hidden until opened. -->
-    <div class="vk-base-overlay" id="vk-base-overlay" hidden>
-        <div class="vk-base-panel" role="dialog" aria-modal="true" aria-labelledby="vk-base-title">
-            <h4 class="vk-base-title" id="vk-base-title" data-i18n="vkStartFrom">Start from…</h4>
-            <div class="vk-base-list" id="vk-base-list"></div>
-            <div class="vk-base-actions">
-                <button type="button" class="vk-create-btn" id="vk-base-cancel" data-i18n="vkCancel">Cancel</button>
+    <div class="sk-base-overlay" id="sk-base-overlay" hidden>
+        <div class="sk-base-panel" role="dialog" aria-modal="true" aria-labelledby="sk-base-title">
+            <h4 class="sk-base-title" id="sk-base-title" data-i18n="skStartFrom">Start from…</h4>
+            <div class="sk-base-list" id="sk-base-list"></div>
+            <div class="sk-base-actions">
+                <button type="button" class="sk-create-btn" id="sk-base-cancel" data-i18n="skCancel">Cancel</button>
             </div>
         </div>
     </div>
@@ -48,34 +48,34 @@
 <!-- Cloned by renderPickerList() and inserted under the selected row. Holds the
      description, the scaled live preview, and the ligature list (rendered inline,
      always expanded; hidden entirely when the layout has no ligatures).
-     The .vk-detail-grid/.vk-detail-body pair is the collapse mechanism — see the
+     The .sk-detail-grid/.sk-detail-body pair is the collapse mechanism — see the
      grid-template-rows rules below; the body must stay the grid's ONLY child. -->
-<template id="vk-detail-template">
-    <div class="vk-inline-detail">
-        <div class="vk-detail-grid">
-            <div class="vk-detail-body">
-                <p class="vk-detail-desc"></p>
-                <div class="vk-preview-host"></div>
-                <div class="vk-lig-section">
-                    <span class="vk-lig-label" data-i18n="vkLigatures">Ligatures</span>
-                    <div class="vk-lig-body"></div>
+<template id="sk-detail-template">
+    <div class="sk-inline-detail">
+        <div class="sk-detail-grid">
+            <div class="sk-detail-body">
+                <p class="sk-detail-desc"></p>
+                <div class="sk-preview-host"></div>
+                <div class="sk-lig-section">
+                    <span class="sk-lig-label" data-i18n="skLigatures">Ligatures</span>
+                    <div class="sk-lig-body"></div>
                 </div>
             </div>
         </div>
     </div>
 </template>
-</div><!-- /#vk-view-picker -->
+</div><!-- /#sk-view-picker -->
 
 <!-- View 2 host: the editor injects its markup here (layout-editor.js). Hidden
      until the controller swaps to the editor view. -->
-<div id="vk-view-editor" class="vk-view" style="display: none;"></div>
+<div id="sk-view-editor" class="sk-view" style="display: none;"></div>
 
 <style>
-.vk-settings {
+.sk-settings {
     margin: 0;
 }
 
-.vk-settings h3 {
+.sk-settings h3 {
     margin-top: 0;
     margin-bottom: 0.5em;
 }
@@ -84,17 +84,17 @@
    wins. A custom layout's label may be Shavian (customLayoutLabel), and only
    Inter-Alia draws the VS1 variants, so the dropdown and roster need it named.
    The base overlay is listed separately because promoteBasePicker reparents it
-   clear of .vk-settings. */
-.vk-settings input,
-.vk-settings button,
-.vk-settings select,
-.vk-settings textarea,
-.vk-base-overlay button {
+   clear of .sk-settings. */
+.sk-settings input,
+.sk-settings button,
+.sk-settings select,
+.sk-settings textarea,
+.sk-base-overlay button {
     font-family: 'Inter-Alia', sans-serif;
 }
 
 /* Flat radio list of layouts (built-in + custom). */
-.vk-layout-list {
+.sk-layout-list {
     display: flex;
     flex-direction: column;
     gap: 0.4em;
@@ -103,43 +103,43 @@
 /* WIDE geometry: give the list + inline preview room to breathe (the inline
    detail still sits under the selected row, just wider). Cap the whole picker so
    the preview doesn't scale up to an unwieldy size on a big desktop dialog. */
-.vk-geo-wide .vk-layout-list {
+.sk-geo-wide .sk-layout-list {
     max-width: 620px;
 }
 
 /* MOBILE geometry: a native dropdown replaces the radio rows. */
-.vk-dropdown-bar {
+.sk-dropdown-bar {
     display: flex;
     align-items: center;
     gap: 0.4em;
 }
 
-.vk-dropdown {
+.sk-dropdown {
     flex: 1;
     min-width: 0;
     padding: 8px 10px;
     font-size: 15px;
-    border: 2px solid var(--vk-border-control);
+    border: 2px solid var(--sk-border-control);
     border-radius: 8px;
-    background: var(--vk-surface);
-    color: var(--vk-text);
+    background: var(--sk-surface);
+    color: var(--sk-text);
 }
 
-.vk-dropdown-edit {
+.sk-dropdown-edit {
     flex: 0 0 auto;
 }
 
-.vk-dropdown-edit:disabled {
+.sk-dropdown-edit:disabled {
     opacity: 0.4;
     cursor: default;
 }
 
-.vk-layout-choice {
+.sk-layout-choice {
     display: flex;
     align-items: center;
     gap: 0.4em;
     padding: 0.4em 0.6em;
-    border: 2px solid var(--vk-border-mid);
+    border: 2px solid var(--sk-border-mid);
     border-radius: 6px;
     cursor: pointer;
     transition: border-color 0.2s, background-color 0.2s;
@@ -148,30 +148,30 @@
 /* Hover highlight only on true hover-capable pointers: on touch (iPad) :hover
    sticks to the last-tapped row, leaving a stray border on an unselected row. */
 @media (hover: hover) {
-    .vk-layout-choice:hover {
-        border-color: var(--vk-accent);
-        background-color: var(--vk-surface-tint);
+    .sk-layout-choice:hover {
+        border-color: var(--sk-accent);
+        background-color: var(--sk-surface-tint);
     }
 }
 
-.vk-layout-choice:has(input[type="radio"]:checked) {
-    border-color: var(--vk-accent);
-    background-color: var(--vk-accent-fill);
+.sk-layout-choice:has(input[type="radio"]:checked) {
+    border-color: var(--sk-accent);
+    background-color: var(--sk-accent-fill);
 }
 
 /* Keyboard focus ring only (focus-visible) — a tap must not leave a lingering
    focus outline on a row's radio, but Tab-navigation keeps an accessible ring. */
-.vk-layout-choice:has(input[type="radio"]:focus-visible) {
-    outline: 2px solid var(--vk-accent);
+.sk-layout-choice:has(input[type="radio"]:focus-visible) {
+    outline: 2px solid var(--sk-accent);
     outline-offset: 1px;
 }
 
-.vk-layout-choice input[type="radio"] {
+.sk-layout-choice input[type="radio"] {
     margin: 0;
     cursor: pointer;
 }
 
-.vk-choice-name {
+.sk-choice-name {
     font-weight: 500;
     user-select: none;
     flex: 1;
@@ -179,46 +179,46 @@
 }
 
 /* Subtle "custom" chip marking a user layout in the flat list. */
-.vk-custom-chip {
+.sk-custom-chip {
     font-size: 0.7em;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    color: var(--vk-chip-text);
-    background: var(--vk-chip-fill);
-    border: 1px solid var(--vk-chip-border);
+    color: var(--sk-chip-text);
+    background: var(--sk-chip-fill);
+    border: 1px solid var(--sk-chip-border);
     border-radius: 4px;
     padding: 1px 5px;
     white-space: nowrap;
 }
 
 /* Per-custom-row inline edit affordance (built-ins have none). */
-.vk-edit-btn {
+.sk-edit-btn {
     flex: 0 0 auto;
     padding: 2px 8px;
     font-size: 13px;
     line-height: 1.4;
-    border: 1px solid var(--vk-border-soft);
+    border: 1px solid var(--sk-border-soft);
     border-radius: 6px;
-    background: var(--vk-surface);
-    color: var(--vk-text);
+    background: var(--sk-surface);
+    color: var(--sk-text);
     cursor: pointer;
 }
 
-.vk-edit-btn:hover {
-    background: var(--vk-surface-hover);
-    border-color: var(--vk-accent);
+.sk-edit-btn:hover {
+    background: var(--sk-surface-hover);
+    border-color: var(--sk-accent);
 }
 
 /* Inline detail block, inserted directly beneath the selected row so the preview
    reads as attached to it (fixes the round-1 "detached panel" complaint). */
-.vk-inline-detail {
+.sk-inline-detail {
     margin: -0.1em 0 0.2em 0;
     padding: 0.6em 0.7em 0.7em;
-    border: 2px solid var(--vk-accent-border);
+    border: 2px solid var(--sk-accent-border);
     border-top: none;
     border-radius: 0 0 6px 6px;
-    background: var(--vk-accent-surface);
+    background: var(--sk-accent-surface);
 }
 
 /* Switch-layout continuity: the outgoing detail collapses while the incoming one
@@ -226,7 +226,7 @@
    grid-template-rows 1fr->0fr animates to the CONTENT's intrinsic height with no
    measuring. Nothing is left constraining the settled panel, so the scaled preview
    can never end up clipped. Keep in step with DETAIL_ANIM_MS. */
-.vk-detail-grid {
+.sk-detail-grid {
     display: grid;
     grid-template-rows: 1fr;
     transition: grid-template-rows 0.2s ease;
@@ -234,51 +234,51 @@
 
 /* min-height:0 is what lets the 0fr track actually squash its content; overflow
    here (not on the panel) keeps the clipping strictly inside the animating box. */
-.vk-detail-body {
+.sk-detail-body {
     min-height: 0;
     overflow: hidden;
 }
 
 /* Collapsed: zero content track, and the panel's own padding/border go with it —
    otherwise a fully collapsed detail leaves a visible stripe behind. */
-.vk-inline-detail.vk-detail-collapsed {
+.sk-inline-detail.sk-detail-collapsed {
     padding-top: 0;
     padding-bottom: 0;
     border-bottom-width: 0;
     opacity: 0;
 }
 
-.vk-inline-detail.vk-detail-collapsed > .vk-detail-grid {
+.sk-inline-detail.sk-detail-collapsed > .sk-detail-grid {
     grid-template-rows: 0fr;
 }
 
-.vk-inline-detail {
+.sk-inline-detail {
     transition: padding 0.2s ease, border-bottom-width 0.2s ease, opacity 0.2s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .vk-detail-grid,
-    .vk-inline-detail {
+    .sk-detail-grid,
+    .sk-inline-detail {
         transition: none;
     }
 }
 
-.vk-detail-desc {
+.sk-detail-desc {
     margin: 0 0 0.5em;
-    color: var(--vk-text-detail);
+    color: var(--sk-text-detail);
     line-height: 1.4;
     font-size: 0.9em;
 }
 
-.vk-cov-badge {
+.sk-cov-badge {
     font-weight: 600;
     white-space: nowrap;
 }
-.vk-cov-complete {
-    color: var(--vk-badge-ok);   /* green ✓ */
+.sk-cov-complete {
+    color: var(--sk-badge-ok);   /* green ✓ */
 }
-.vk-cov-incomplete {
-    color: var(--vk-badge-warn);   /* amber ⚠ */
+.sk-cov-incomplete {
+    color: var(--sk-badge-warn);   /* amber ⚠ */
 }
 
 /* Preview host: the scaler inside is transform-scaled to fit by
@@ -286,13 +286,13 @@
    (unscaled) width never widens the column — otherwise the keyboard's intrinsic
    width would push the picker past the mount and clip. The host's own
    width/height are set explicitly by scalePreviewToWidth. */
-.vk-preview-host {
+.sk-preview-host {
     position: relative;
     max-width: 100%;
     overflow: hidden;
 }
 
-.vk-preview-scaler {
+.sk-preview-scaler {
     position: absolute;
     top: 0;
     left: 0;
@@ -303,15 +303,15 @@
 /* A preview keyboard body: reuse the live .keyboard-body geometry but strip the
    window chrome context (no header). Only the ⇧ key takes pointer input (it flips
    the layer); everything else is display-only. */
-.vk-preview-body {
+.sk-preview-body {
     margin: 0;
 }
 
-.vk-preview-body .key {
+.sk-preview-body .key {
     pointer-events: none;
 }
 
-.vk-preview-body .key[data-key="Shift"] {
+.sk-preview-body .key[data-key="Shift"] {
     pointer-events: auto;
     cursor: pointer;
 }
@@ -319,12 +319,12 @@
 /* The clickable preview cap is the only preview key taking pointer input, so a TAP
    on iPad lands (and STICKS) the global .key:hover raise. Reset it here on touch;
    restore the hover feedback only on true hover-capable pointers. */
-.vk-preview-body .key:hover {
+.sk-preview-body .key:hover {
     transform: none;
     box-shadow: none;
 }
 @media (hover: hover) {
-    .vk-preview-body .key[data-key="Shift"]:hover {
+    .sk-preview-body .key[data-key="Shift"]:hover {
         transform: translateY(-1px);
         box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
     }
@@ -333,11 +333,11 @@
 /* One-shot pulse inviting the user to tap ⇧ (added on first preview render, then
    removed on animationend so it never loops). animationend fires once, after the
    last of the 2 iterations — so the single-fire {once:true} remover is enough. */
-.vk-preview-body .key.vk-shift-pulse {
-    animation: vk-shift-pulse 0.9s ease-in-out 2;
+.sk-preview-body .key.sk-shift-pulse {
+    animation: sk-shift-pulse 0.9s ease-in-out 2;
 }
 
-@keyframes vk-shift-pulse {
+@keyframes sk-shift-pulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0); }
     50% { box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.5); }
 }
@@ -345,55 +345,55 @@
 /* Ligatures — rendered inline, always expanded. Built-ins carry only 0–8, so the
    list is about as tall as a collapsed summary would be; hidden entirely (via JS)
    when the layout has none. */
-.vk-lig-section {
+.sk-lig-section {
     margin-top: 0.6em;
     font-size: 0.85em;
 }
 
-.vk-lig-label {
-    color: var(--vk-text);
+.sk-lig-label {
+    color: var(--sk-text);
     font-weight: 600;
     user-select: none;
 }
 
-.vk-lig-body {
+.sk-lig-body {
     margin-top: 0.4em;
     display: flex;
     flex-wrap: wrap;
     gap: 0.35em;
 }
 
-.vk-lig-item {
-    border: 1px solid var(--vk-chip-border);
-    background: var(--vk-surface);
+.sk-lig-item {
+    border: 1px solid var(--sk-chip-border);
+    background: var(--sk-surface);
     border-radius: 5px;
     padding: 2px 6px;
     white-space: nowrap;
 }
 
 /* One compact create/import affordance below the list. */
-.vk-create-bar {
+.sk-create-bar {
     display: flex;
     align-items: center;
     gap: 0.4em;
     flex-wrap: wrap;
     margin-top: 0.9em;
     padding-top: 0.8em;
-    border-top: 1px solid var(--vk-border);
+    border-top: 1px solid var(--sk-border);
 }
 
-.vk-create-btn {
+.sk-create-btn {
     padding: 6px 12px;
     font-size: 13px;
-    border: 2px solid var(--vk-border);
+    border: 2px solid var(--sk-border);
     border-radius: 8px;
-    background: var(--vk-surface);
-    color: var(--vk-text);
+    background: var(--sk-surface);
+    color: var(--sk-text);
     cursor: pointer;
 }
 
-.vk-create-btn:hover {
-    background: var(--vk-surface-hover);
+.sk-create-btn:hover {
+    background: var(--sk-surface-hover);
 }
 
 /* Base-picker overlay. openBasePicker reparents it out of the picker (into the
@@ -402,11 +402,11 @@
    game's own settings modal (z-index 2000); inside the top-layer <dialog> the
    stacking is already above ::backdrop. Not a nested <dialog>.showModal — see
    promoteBasePicker. */
-.vk-base-overlay[hidden] {
+.sk-base-overlay[hidden] {
     display: none;   /* [hidden] must beat the display:flex below */
 }
 
-.vk-base-overlay {
+.sk-base-overlay {
     position: fixed;
     inset: 0;
     z-index: 2500;
@@ -417,25 +417,25 @@
     background: rgba(0, 0, 0, 0.35);
 }
 
-.vk-base-panel {
+.sk-base-panel {
     display: flex;
     flex-direction: column;
     max-height: 100%;   /* the fixed overlay is the viewport, so this is viewport-bounded */
     width: 100%;
     max-width: 320px;
-    background: var(--vk-surface);
+    background: var(--sk-surface);
     border-radius: 12px;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
     padding: 14px;
     box-sizing: border-box;
 }
 
-.vk-base-title {
+.sk-base-title {
     margin: 0 0 0.6em;
     font-size: 15px;
 }
 
-.vk-base-list {
+.sk-base-list {
     display: flex;
     flex-direction: column;
     gap: 0.4em;
@@ -443,26 +443,26 @@
     min-height: 0;   /* let the list scroll instead of clipping on mobile */
 }
 
-.vk-base-option {
+.sk-base-option {
     padding: 8px 12px;
     font-size: 14px;
     text-align: left;
-    border: 2px solid var(--vk-border);
+    border: 2px solid var(--sk-border);
     border-radius: 8px;
-    background: var(--vk-surface);
-    color: var(--vk-text);
+    background: var(--sk-surface);
+    color: var(--sk-text);
     cursor: pointer;
 }
 
-.vk-base-option:hover {
-    background: var(--vk-surface-hover);
+.sk-base-option:hover {
+    background: var(--sk-surface-hover);
 }
 
-.vk-base-actions {
+.sk-base-actions {
     margin-top: 0.8em;
     display: flex;
     justify-content: flex-end;
 }
 </style>
 
-<!-- Event handlers are attached by loadVirtualKeyboardSettingsHTML in virtual-keyboard.js -->
+<!-- Event handlers are attached by loadShawKeysSettingsHTML in shaw-keys.js -->

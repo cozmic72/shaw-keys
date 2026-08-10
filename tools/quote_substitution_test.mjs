@@ -4,7 +4,7 @@
 // reach beforeinput as U+2019, which matched no layout entry, so the character
 // bound as itself instead of translating.
 //
-// The test reads the layout JSON from disk and imports virtual-keyboard.js under
+// The test reads the layout JSON from disk and imports shaw-keys.js under
 // a window stub, so it constrains the shipped data and the shipped code rather
 // than a restatement of either.
 //
@@ -26,7 +26,7 @@ function assert(cond, msg) { if (!cond) throw new Error(msg || 'assertion failed
 // The library is an ES module graph that touches window/document/navigator as it
 // executes. Stub only what module scope reads before any call, then import the
 // real modules so the test constrains the shipped code.
-async function loadVirtualKeyboard() {
+async function loadShawKeys() {
   globalThis.window = {};
   globalThis.document = { addEventListener() {}, querySelector: () => null,
                           querySelectorAll: () => [], getElementsByTagName: () => [] };
@@ -34,10 +34,10 @@ async function loadVirtualKeyboard() {
   Object.defineProperty(globalThis, 'navigator', {
     value: { platform: 'MacIntel', userAgent: 'node' }, configurable: true });
   globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
-  const { VirtualKeyboard } = await import('../virtual-keyboard.js');
-  assert(VirtualKeyboard && VirtualKeyboard._internal,
-         'virtual-keyboard.js did not export VirtualKeyboard._internal');
-  return VirtualKeyboard;
+  const { ShawKeys } = await import('../shaw-keys.js');
+  assert(ShawKeys && ShawKeys._internal,
+         'shaw-keys.js did not export ShawKeys._internal');
+  return ShawKeys;
 }
 
 function layoutKeys(name) {
@@ -59,7 +59,7 @@ const SUBSTITUTED = {
 // which is why the legend was always right; emission had to reach them too.
 const QUOTE_BINDING_LAYOUTS = ['igc', 'imperial'];
 
-const { physicalKeyFor } = (await loadVirtualKeyboard())._internal;
+const { physicalKeyFor } = (await loadShawKeys())._internal;
 
 check('physicalKeyFor is exported for the emission path to use', () => {
   assert(typeof physicalKeyFor === 'function', 'physicalKeyFor missing from _internal');

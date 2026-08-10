@@ -42,7 +42,7 @@ done
 
 [ -n "$FONT_URL" ] || {
     echo "stage.sh: --font-url is required." >&2
-    echo "  It is baked into virtual-keyboard.css's @font-face rule. Pass the URL" >&2
+    echo "  It is baked into shaw-keys.css's @font-face rule. Pass the URL" >&2
     echo "  under which the destination serves InterAlia-VF.otf, e.g. /fonts" >&2
     exit 1
 }
@@ -59,6 +59,6 @@ mkdir -p "$DEST"
 cp -R "$SRC_DIR"/* "$DEST"/
 rm -rf "$DEST/tools" "$DEST/docs"
 
-"$SRC_DIR/tools/substitute-font-url.sh" "$FONT_URL" "$DEST/virtual-keyboard.css"
+"$SRC_DIR/tools/substitute-font-url.sh" "$FONT_URL" "$DEST/shaw-keys.css"
 
-echo "Virtual keyboard staged to $DEST/ (FONT_URL=$FONT_URL)"
+echo "Shaw Keys staged to $DEST/ (FONT_URL=$FONT_URL)"

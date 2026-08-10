@@ -146,7 +146,7 @@ function fakeKey(dataKey, shavian) {
 // execCommand, which routes insertion and deletion through the library's
 // Selection-based fallbacks — the branches this stub can actually observe.
 let loadCount = 0;
-async function loadVirtualKeyboard() {
+async function loadShawKeys() {
   const listeners = {};
   const byId = {};
   let keys = [];
@@ -169,8 +169,8 @@ async function loadVirtualKeyboard() {
   globalThis.InputEvent = class { constructor(type, init) { Object.assign(this, init); this.type = type; } };
   Object.defineProperty(globalThis, 'navigator', {
     value: { platform: 'MacIntel', userAgent: 'node' }, configurable: true });
-  const { VirtualKeyboard: api } = await import(`../virtual-keyboard.js?t=${++loadCount}`);
-  assert(api && api._internal, 'virtual-keyboard.js did not export VirtualKeyboard._internal');
+  const { ShawKeys: api } = await import(`../shaw-keys.js?t=${++loadCount}`);
+  assert(api && api._internal, 'shaw-keys.js did not export ShawKeys._internal');
 
   const focus = (el) => {
     document.activeElement = el;
@@ -189,7 +189,7 @@ async function loadVirtualKeyboard() {
 }
 
 await check('tapping a glyph into a contenteditable destination inserts it', async () => {
-  const { api, focus, wireKeys, useSelection } = await loadVirtualKeyboard();
+  const { api, focus, wireKeys, useSelection } = await loadShawKeys();
   const editor = fakeContentEditable('richEditor');
   api.enableInterception(editor);
   focus(editor);
@@ -204,7 +204,7 @@ await check('tapping a glyph into a contenteditable destination inserts it', asy
 });
 
 await check('tapping twice into a contenteditable appends rather than overwrites', async () => {
-  const { api, focus, wireKeys, useSelection } = await loadVirtualKeyboard();
+  const { api, focus, wireKeys, useSelection } = await loadShawKeys();
   const editor = fakeContentEditable('richEditor');
   api.enableInterception(editor);
   focus(editor);
@@ -219,7 +219,7 @@ await check('tapping twice into a contenteditable appends rather than overwrites
 });
 
 await check('backspace into a contenteditable destination removes a glyph', async () => {
-  const { api, focus, wireKeys, useSelection } = await loadVirtualKeyboard();
+  const { api, focus, wireKeys, useSelection } = await loadShawKeys();
   const editor = fakeContentEditable('richEditor');
   api.enableInterception(editor);
   focus(editor);
@@ -239,7 +239,7 @@ await check('backspace into a contenteditable destination removes a glyph', asyn
 // of one behind, which is the bug the value-bearing branch already avoids by
 // splitting with Array.from.
 await check('backspace on a contenteditable deletes a whole Shavian letter', async () => {
-  const { api, focus, wireKeys, useSelection } = await loadVirtualKeyboard();
+  const { api, focus, wireKeys, useSelection } = await loadShawKeys();
   const editor = fakeContentEditable('richEditor');
   api.enableInterception(editor);
   focus(editor);
@@ -256,7 +256,7 @@ await check('backspace on a contenteditable deletes a whole Shavian letter', asy
 // The <input> route is the one every existing host relies on. Sharing one
 // insertion routine between the two element kinds must not have moved it.
 await check('the <input> path still inserts glyphs at the caret', async () => {
-  const { api, focus, wireKeys } = await loadVirtualKeyboard();
+  const { api, focus, wireKeys } = await loadShawKeys();
   const field = fakeInput('hostField');
   api.enableInterception(field);
   focus(field);
@@ -275,7 +275,7 @@ await check('the <input> path still inserts glyphs at the caret', async () => {
 // does not touch — pinning the ASCII case here keeps the <input> route honest
 // without asserting the broken one either way.
 await check('the <input> path still backspaces identically', async () => {
-  const { api, focus, wireKeys } = await loadVirtualKeyboard();
+  const { api, focus, wireKeys } = await loadShawKeys();
   const field = fakeInput('hostField');
   api.enableInterception(field);
   focus(field);
@@ -292,7 +292,7 @@ await check('the <input> path still backspaces identically', async () => {
 });
 
 await check('setDestination accepts a contenteditable element', async () => {
-  const { api } = await loadVirtualKeyboard();
+  const { api } = await loadShawKeys();
   const editor = fakeContentEditable('pinnedEditor');
   api.setDestination(editor);
   assert(api.getDestinationInput() === editor,
@@ -300,7 +300,7 @@ await check('setDestination accepts a contenteditable element', async () => {
 });
 
 await check('setDestination still rejects a plain DIV', async () => {
-  const { api } = await loadVirtualKeyboard();
+  const { api } = await loadShawKeys();
   assertThrows(() => api.setDestination({ tagName: 'DIV' }),
     'a non-editable element must still fail loudly rather than no-op on every tap');
 });

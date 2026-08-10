@@ -67,14 +67,14 @@ function fakeInput() {
 // module scope, so each case gets its own import.
 let loadCount = 0;
 async function loadLibrary() {
-  const keyboardElement = { id: 'virtualKeyboard', style: { display: 'block' } };
+  const keyboardElement = { id: 'shawKeys', style: { display: 'block' } };
   globalThis.window = {};
   globalThis.document = {
     activeElement: null,
     addEventListener() {}, removeEventListener() {},
     querySelector: () => null, querySelectorAll: () => [],
     getElementsByTagName: () => [],
-    getElementById: (id) => (id === 'virtualKeyboard' ? keyboardElement : null),
+    getElementById: (id) => (id === 'shawKeys' ? keyboardElement : null),
     contains: () => true,
   };
   globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
@@ -91,9 +91,9 @@ async function loadLibrary() {
     if (!fs.existsSync(file)) return { ok: false, status: 404 };
     return { ok: true, status: 200, json: async () => JSON.parse(fs.readFileSync(file, 'utf8')) };
   };
-  const { VirtualKeyboard } = await import(`../virtual-keyboard.js?t=${++loadCount}`);
-  assert(VirtualKeyboard, 'virtual-keyboard.js did not export VirtualKeyboard');
-  return VirtualKeyboard;
+  const { ShawKeys } = await import(`../shaw-keys.js?t=${++loadCount}`);
+  assert(ShawKeys, 'shaw-keys.js did not export ShawKeys');
+  return ShawKeys;
 }
 
 // Press one key on `layout` and report what the document is left holding.

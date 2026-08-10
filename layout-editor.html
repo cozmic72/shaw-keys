@@ -1,6 +1,6 @@
 <!-- Layout-editor VIEW. Fetched by layout-editor.js on first open (via
      getResourceUrl, like keyboard-settings.html) and injected into a host
-     container the vk settings dialog supplies — the editor is VIEW 2 of that one
+     container the Shaw Keys settings dialog supplies — the editor is VIEW 2 of that one
      dialog (view replacement, not a second modal), so this markup carries NO
      overlay/backdrop of its own. Behaviour: layout-editor.js; styling:
      layout-editor.css.
@@ -37,15 +37,15 @@
              outside .le-keyboard so they can't scroll away with it. -->
         <div class="le-layer-bar">
             <div class="le-layer-tabs" role="tablist">
-                <button id="leLayerMain" class="le-layer-tab le-layer-active" role="tab" data-i18n="vkEditorLayerMain" onclick="LayoutEditor.setLayer('main')">Main</button>
-                <button id="leLayerShift" class="le-layer-tab" role="tab" data-i18n="vkEditorLayerShift" onclick="LayoutEditor.setLayer('shift')">Shift</button>
+                <button id="leLayerMain" class="le-layer-tab le-layer-active" role="tab" data-i18n="skEditorLayerMain" onclick="LayoutEditor.setLayer('main')">Main</button>
+                <button id="leLayerShift" class="le-layer-tab" role="tab" data-i18n="skEditorLayerShift" onclick="LayoutEditor.setLayer('shift')">Shift</button>
             </div>
             <div id="leCoverage" class="le-coverage"></div>
         </div>
         <div id="layoutEditorKeyboard" class="le-keyboard le-keyboard-tabbed"></div>
-        <div class="le-hint" data-i18n="vkEditorHint">Tap a key, then type its letter. Arrow/Tab move between keys.</div>
+        <div class="le-hint" data-i18n="skEditorHint">Tap a key, then type its letter. Arrow/Tab move between keys.</div>
 
-        <label class="le-section" data-i18n="vkLigatures">Ligatures</label>
+        <label class="le-section" data-i18n="skLigatures">Ligatures</label>
         <div id="layoutEditorLigatures"></div>
 
         <div id="layoutEditorStatus" style="font-size: 0.9em; margin-top: 8px; display: none;"></div>
@@ -54,14 +54,14 @@
          tab stays calm. Download/Delete act on the open custom. Renaming is the
          name field above, which sets both the Latin and Shavian names. -->
     <div class="le-manage">
-        <span class="le-manage-label" data-i18n="vkEditorManageLabel">This layout:</span>
-        <button class="le-btn le-manage-btn" data-i18n="vkEditorDownload" onclick="LayoutEditor.download()">Download</button>
-        <button class="le-btn le-manage-btn le-manage-danger" data-i18n="vkEditorDelete" onclick="LayoutEditor.remove()">Delete</button>
+        <span class="le-manage-label" data-i18n="skEditorManageLabel">This layout:</span>
+        <button class="le-btn le-manage-btn" data-i18n="skEditorDownload" onclick="LayoutEditor.download()">Download</button>
+        <button class="le-btn le-manage-btn le-manage-danger" data-i18n="skEditorDelete" onclick="LayoutEditor.remove()">Delete</button>
     </div>
 
     <!-- Pinned action bar. Save is the single CTA: it validates, persists, and
          returns to view 1. Back lives in the dialog header (one Back only). -->
     <div class="le-footer">
-        <button class="settings-close-btn le-save" data-i18n="vkEditorSave" onclick="LayoutEditor.save()">Save</button>
+        <button class="settings-close-btn le-save" data-i18n="skEditorSave" onclick="LayoutEditor.save()">Save</button>
     </div>
 </div>

@@ -24,7 +24,7 @@ SOFTWARE.
 
 ## Inter Alia
 
-This repository distributes no font files. `virtual-keyboard.css` declares an
+This repository distributes no font files. `shaw-keys.css` declares an
 `@font-face` rule whose URL the consumer supplies when staging the library, so
 the typeface is a dependency rather than a bundled component and this licence
 does not cover it.

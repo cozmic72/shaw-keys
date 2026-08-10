@@ -9,7 +9,7 @@
 }
 
 /* --- Surface palette ---------------------------------------------------
-   The keyboard itself is dark in every theme (see .virtual-keyboard below):
+   The keyboard itself is dark in every theme (see .shaw-keys below):
    it is a floating instrument, not a page surface. Its SETTINGS surfaces are
    not — the picker (keyboard-settings.html) and the editor (layout-editor.css)
    are injected into the host document and read as part of the host's page, so
@@ -25,109 +25,109 @@
    dark values are the keyboard's own #2a2a2a/#3d3d3d/#e0e0e0, so a themed
    settings surface and the keyboard it configures read as one instrument. */
 :root {
-    --vk-surface: #fff;
-    --vk-surface-raised: #fafafa;
-    --vk-surface-hover: #f3f3f3;
-    --vk-surface-tint: #f8f9fa;
-    --vk-surface-sunken: #ececec;
-    --vk-text: #444;
-    --vk-text-muted: #777;
-    --vk-text-detail: #555;
-    --vk-text-meta: #666;
-    --vk-text-hint: #888;
-    --vk-dirty: #b06a1a;
-    --vk-border: #e0e0e0;
-    --vk-border-mid: #ddd;
-    --vk-border-soft: #d5d5d5;
-    --vk-border-strong: #d0d0d0;
-    --vk-border-control: #ccc;
-    --vk-accent: #007bff;
-    --vk-accent-fill: #e7f3ff;
-    --vk-accent-border: #cfe3ff;
-    --vk-accent-surface: #f4f9ff;
-    --vk-chip-text: #6b57c8;
-    --vk-chip-fill: #efeaff;
-    --vk-chip-border: #d9cffb;
+    --sk-surface: #fff;
+    --sk-surface-raised: #fafafa;
+    --sk-surface-hover: #f3f3f3;
+    --sk-surface-tint: #f8f9fa;
+    --sk-surface-sunken: #ececec;
+    --sk-text: #444;
+    --sk-text-muted: #777;
+    --sk-text-detail: #555;
+    --sk-text-meta: #666;
+    --sk-text-hint: #888;
+    --sk-dirty: #b06a1a;
+    --sk-border: #e0e0e0;
+    --sk-border-mid: #ddd;
+    --sk-border-soft: #d5d5d5;
+    --sk-border-strong: #d0d0d0;
+    --sk-border-control: #ccc;
+    --sk-accent: #007bff;
+    --sk-accent-fill: #e7f3ff;
+    --sk-accent-border: #cfe3ff;
+    --sk-accent-surface: #f4f9ff;
+    --sk-chip-text: #6b57c8;
+    --sk-chip-fill: #efeaff;
+    --sk-chip-border: #d9cffb;
     /* The picker's badge and the editor's coverage line were authored with
        different greens/ambers. Kept apart so light rendering is untouched;
        they converge on one pair in dark, where the light shades are too dark
        to read. */
-    --vk-badge-ok: #1a7f37;
-    --vk-coverage-ok: #28a745;
-    --vk-badge-warn: #b35900;
-    --vk-coverage-warn: #d9822b;
-    --vk-danger: #c0392b;
-    --vk-danger-border: #e8c4c0;
+    --sk-badge-ok: #1a7f37;
+    --sk-coverage-ok: #28a745;
+    --sk-badge-warn: #b35900;
+    --sk-coverage-warn: #d9822b;
+    --sk-danger: #c0392b;
+    --sk-danger-border: #e8c4c0;
 }
 
 :root[data-theme="dark"] {
-    --vk-surface: #2a2a2a;
-    --vk-surface-raised: #3d3d3d;
-    --vk-surface-hover: #4a4a4a;
-    --vk-surface-tint: #333;
-    --vk-surface-sunken: #353535;
-    --vk-text: #e0e0e0;
-    --vk-text-muted: #aaa;
-    --vk-text-detail: #bbb;
-    --vk-text-meta: #b0b0b0;
-    --vk-text-hint: #9a9a9a;
-    --vk-dirty: #e0a35c;
-    --vk-border: #4a4a4a;
-    --vk-border-mid: #454545;
-    --vk-border-soft: #4f4f4f;
-    --vk-border-strong: #5a5a5a;
-    --vk-border-control: #5a5a5a;
-    --vk-accent: #4a9eff;
-    --vk-accent-fill: #24384d;
-    --vk-accent-border: #3a6285;
-    --vk-accent-surface: #24303d;
-    --vk-chip-text: #b9a9f5;
-    --vk-chip-fill: #332d4a;
-    --vk-chip-border: #4c4370;
-    --vk-badge-ok: #5fd18a;
-    --vk-coverage-ok: #5fd18a;
-    --vk-badge-warn: #e0a35c;
-    --vk-coverage-warn: #e0a35c;
-    --vk-danger: #f08a7d;
-    --vk-danger-border: #7a4038;
+    --sk-surface: #2a2a2a;
+    --sk-surface-raised: #3d3d3d;
+    --sk-surface-hover: #4a4a4a;
+    --sk-surface-tint: #333;
+    --sk-surface-sunken: #353535;
+    --sk-text: #e0e0e0;
+    --sk-text-muted: #aaa;
+    --sk-text-detail: #bbb;
+    --sk-text-meta: #b0b0b0;
+    --sk-text-hint: #9a9a9a;
+    --sk-dirty: #e0a35c;
+    --sk-border: #4a4a4a;
+    --sk-border-mid: #454545;
+    --sk-border-soft: #4f4f4f;
+    --sk-border-strong: #5a5a5a;
+    --sk-border-control: #5a5a5a;
+    --sk-accent: #4a9eff;
+    --sk-accent-fill: #24384d;
+    --sk-accent-border: #3a6285;
+    --sk-accent-surface: #24303d;
+    --sk-chip-text: #b9a9f5;
+    --sk-chip-fill: #332d4a;
+    --sk-chip-border: #4c4370;
+    --sk-badge-ok: #5fd18a;
+    --sk-coverage-ok: #5fd18a;
+    --sk-badge-warn: #e0a35c;
+    --sk-coverage-warn: #e0a35c;
+    --sk-danger: #f08a7d;
+    --sk-danger-border: #7a4038;
 }
 
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-        --vk-surface: #2a2a2a;
-        --vk-surface-raised: #3d3d3d;
-        --vk-surface-hover: #4a4a4a;
-        --vk-surface-tint: #333;
-        --vk-surface-sunken: #353535;
-        --vk-text: #e0e0e0;
-        --vk-text-muted: #aaa;
-        --vk-text-detail: #bbb;
-        --vk-text-meta: #b0b0b0;
-        --vk-text-hint: #9a9a9a;
-        --vk-dirty: #e0a35c;
-        --vk-border: #4a4a4a;
-        --vk-border-mid: #454545;
-        --vk-border-soft: #4f4f4f;
-        --vk-border-strong: #5a5a5a;
-        --vk-border-control: #5a5a5a;
-        --vk-accent: #4a9eff;
-        --vk-accent-fill: #24384d;
-        --vk-accent-border: #3a6285;
-        --vk-accent-surface: #24303d;
-        --vk-chip-text: #b9a9f5;
-        --vk-chip-fill: #332d4a;
-        --vk-chip-border: #4c4370;
-        --vk-badge-ok: #5fd18a;
-        --vk-coverage-ok: #5fd18a;
-        --vk-badge-warn: #e0a35c;
-        --vk-coverage-warn: #e0a35c;
-        --vk-danger: #f08a7d;
-        --vk-danger-border: #7a4038;
+        --sk-surface: #2a2a2a;
+        --sk-surface-raised: #3d3d3d;
+        --sk-surface-hover: #4a4a4a;
+        --sk-surface-tint: #333;
+        --sk-surface-sunken: #353535;
+        --sk-text: #e0e0e0;
+        --sk-text-muted: #aaa;
+        --sk-text-detail: #bbb;
+        --sk-text-meta: #b0b0b0;
+        --sk-text-hint: #9a9a9a;
+        --sk-dirty: #e0a35c;
+        --sk-border: #4a4a4a;
+        --sk-border-mid: #454545;
+        --sk-border-soft: #4f4f4f;
+        --sk-border-strong: #5a5a5a;
+        --sk-border-control: #5a5a5a;
+        --sk-accent: #4a9eff;
+        --sk-accent-fill: #24384d;
+        --sk-accent-border: #3a6285;
+        --sk-accent-surface: #24303d;
+        --sk-chip-text: #b9a9f5;
+        --sk-chip-fill: #332d4a;
+        --sk-chip-border: #4c4370;
+        --sk-badge-ok: #5fd18a;
+        --sk-coverage-ok: #5fd18a;
+        --sk-badge-warn: #e0a35c;
+        --sk-coverage-warn: #e0a35c;
+        --sk-danger: #f08a7d;
+        --sk-danger-border: #7a4038;
     }
 }
 
-/* Virtual Keyboard Floating Window */
-.virtual-keyboard {
+/* Shaw Keys Floating Window */
+.shaw-keys {
     position: fixed;
     bottom: 20px;
     right: 20px;
@@ -142,8 +142,8 @@
 }
 
 /* Ensure consistent box model for all keyboard elements */
-.virtual-keyboard,
-.virtual-keyboard * {
+.shaw-keys,
+.shaw-keys * {
     box-sizing: border-box;
 }
 
@@ -309,7 +309,7 @@
 
 /* Mobile responsiveness */
 @media (max-width: 768px) {
-    .virtual-keyboard {
+    .shaw-keys {
         bottom: 0;
         right: 0;
         left: 0;
@@ -327,8 +327,8 @@
 
     /* The keyboard-body carries a structure-imperial class when the active
        layout's structural family is imperial (see updateKeyboardLabels in
-       virtual-keyboard.js, which derives it from
-       VirtualKeyboard.structuralFamilyOf). That resolver maps both the imperial
+       shaw-keys.js, which derives it from
+       ShawKeys.structuralFamilyOf). That resolver maps both the imperial
        and igc built-ins — and any custom layout cloned from them via
        layout.base — to the imperial number-row geometry. The mobile structural
        rules below gate on this family class, not on the layout name, so a
@@ -430,24 +430,24 @@
        transform: scale() in scalePreviewToWidth then fits it to the host WITHOUT
        distorting the ratio. Structure gating (which keys show) is untouched — only
        sizing is pinned. The editor pins the same way in layout-editor.css. */
-    .vk-preview-body.keyboard-body {
+    .sk-preview-body.keyboard-body {
         width: max-content;
     }
 
-    .vk-preview-body .keyboard-row {
+    .sk-preview-body .keyboard-row {
         justify-content: center;
         width: auto;
     }
 
-    .vk-preview-body .key {
+    .sk-preview-body .key {
         flex: 0 0 auto;
         min-width: 34px;
         height: 34px;
     }
 
-    .vk-preview-body .key-wide      { flex: 0 0 auto; min-width: 50px; }
-    .vk-preview-body .key-wider     { flex: 0 0 auto; min-width: 62px; }
-    .vk-preview-body .key-widest    { flex: 0 0 auto; min-width: 82px; }
-    .vk-preview-body .key-wide-half { flex: 0 0 auto; min-width: 42px; }
-    .vk-preview-body .key-space     { flex: 0 0 auto; min-width: 200px; }
+    .sk-preview-body .key-wide      { flex: 0 0 auto; min-width: 50px; }
+    .sk-preview-body .key-wider     { flex: 0 0 auto; min-width: 62px; }
+    .sk-preview-body .key-widest    { flex: 0 0 auto; min-width: 82px; }
+    .sk-preview-body .key-wide-half { flex: 0 0 auto; min-width: 42px; }
+    .sk-preview-body .key-space     { flex: 0 0 auto; min-width: 200px; }
 }

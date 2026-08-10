@@ -6,7 +6,7 @@
 // also makes it a tap destination while it holds focus, which is what lets those
 // hosts route taps without adding a call.
 //
-// Imports virtual-keyboard.js under a window/document stub, so it constrains the
+// Imports shaw-keys.js under a window/document stub, so it constrains the
 // shipped code rather than a restatement of it.
 //
 // Usage: node tools/destination_routing_test.mjs
@@ -52,7 +52,7 @@ function fakeInput(id) {
 // are cached per URL, and these tests need the module-scope state (focus
 // tracking, the destination override) reset between them.
 let loadCount = 0;
-async function loadVirtualKeyboard() {
+async function loadShawKeys() {
   const listeners = {};
   const byId = {};
   const document = {
@@ -72,8 +72,8 @@ async function loadVirtualKeyboard() {
   // Node defines navigator as a getter-only global, so plain assignment throws.
   Object.defineProperty(globalThis, 'navigator', {
     value: { platform: 'MacIntel', userAgent: 'node' }, configurable: true });
-  const { VirtualKeyboard: api } = await import(`../virtual-keyboard.js?t=${++loadCount}`);
-  assert(api && api._internal, 'virtual-keyboard.js did not export VirtualKeyboard._internal');
+  const { ShawKeys: api } = await import(`../shaw-keys.js?t=${++loadCount}`);
+  assert(api && api._internal, 'shaw-keys.js did not export ShawKeys._internal');
 
   // Drive focus the way a browser would: set activeElement, then fire focusin.
   const focus = (el) => {
@@ -85,7 +85,7 @@ async function loadVirtualKeyboard() {
 }
 
 await check('with nothing registered, taps still target #typingInput', async () => {
-  const { api, register } = await loadVirtualKeyboard();
+  const { api, register } = await loadShawKeys();
   const practice = fakeInput('typingInput');
   register('typingInput', practice);
   assert(api.getDestinationInput() === practice,
@@ -93,13 +93,13 @@ await check('with nothing registered, taps still target #typingInput', async () 
 });
 
 await check('with nothing registered and no #typingInput, there is no destination', async () => {
-  const { api } = await loadVirtualKeyboard();
+  const { api } = await loadShawKeys();
   assert(api.getDestinationInput() === null,
     'a page with neither must report no destination rather than inventing one');
 });
 
 await check('keyboard-enabling a field makes taps follow focus to it', async () => {
-  const { api, focus } = await loadVirtualKeyboard();
+  const { api, focus } = await loadShawKeys();
   const field = fakeInput('hostField');
   api.enableInterception(field);
   focus(field);
@@ -108,7 +108,7 @@ await check('keyboard-enabling a field makes taps follow focus to it', async () 
 });
 
 await check('taps follow focus between two keyboard-enabled fields', async () => {
-  const { api, focus } = await loadVirtualKeyboard();
+  const { api, focus } = await loadShawKeys();
   const first = fakeInput('first');
   const second = fakeInput('second');
   api.enableInterception(first);
@@ -120,7 +120,7 @@ await check('taps follow focus between two keyboard-enabled fields', async () =>
 });
 
 await check('focusing a field that never opted in does not capture taps', async () => {
-  const { api, focus, register } = await loadVirtualKeyboard();
+  const { api, focus, register } = await loadShawKeys();
   const practice = fakeInput('typingInput');
   register('typingInput', practice);
   const enabled = fakeInput('enabled');
@@ -135,7 +135,7 @@ await check('focusing a field that never opted in does not capture taps', async 
 // the slug and download filename and must stay Latin. Opting out has to mean
 // taps never reach it, even when it is the focused element.
 await check('an opted-out field never becomes the destination', async () => {
-  const { api, focus } = await loadVirtualKeyboard();
+  const { api, focus } = await loadShawKeys();
   const shavianName = fakeInput('layoutEditorShavianName');
   const latinName = fakeInput('layoutEditorName');
   api.enableInterception(shavianName);
@@ -146,7 +146,7 @@ await check('an opted-out field never becomes the destination', async () => {
 });
 
 await check('registering an already-focused field captures it', async () => {
-  const { api, document } = await loadVirtualKeyboard();
+  const { api, document } = await loadShawKeys();
   const field = fakeInput('lateAttach');
   document.activeElement = field;   // focused BEFORE the host wired it up
   api.enableInterception(field);
@@ -155,7 +155,7 @@ await check('registering an already-focused field captures it', async () => {
 });
 
 await check('setDestination still overrides focus', async () => {
-  const { api, focus } = await loadVirtualKeyboard();
+  const { api, focus } = await loadShawKeys();
   const pinned = fakeInput('pinned');
   const focused = fakeInput('focused');
   api.enableInterception(focused);
@@ -169,7 +169,7 @@ await check('setDestination still overrides focus', async () => {
 });
 
 await check('releasing interception stops taps reaching the field', async () => {
-  const { api, focus, register } = await loadVirtualKeyboard();
+  const { api, focus, register } = await loadShawKeys();
   const practice = fakeInput('typingInput');
   register('typingInput', practice);
   const dialogField = fakeInput('dialogField');
@@ -184,7 +184,7 @@ await check('releasing interception stops taps reaching the field', async () => 
 // Hosts tear dialogs down without releasing first; inserting into a detached
 // node writes into nothing, silently losing what the user typed.
 await check('a detached field is not used as a destination', async () => {
-  const { api, focus, register } = await loadVirtualKeyboard();
+  const { api, focus, register } = await loadShawKeys();
   const practice = fakeInput('typingInput');
   register('typingInput', practice);
   const field = fakeInput('removed');
@@ -196,7 +196,7 @@ await check('a detached field is not used as a destination', async () => {
 });
 
 await check('setDestination still rejects a non-value-bearing element', async () => {
-  const { api } = await loadVirtualKeyboard();
+  const { api } = await loadShawKeys();
   assertThrows(() => api.setDestination({ tagName: 'DIV' }),
     'setDestination must fail loudly on an element it cannot drive');
 });

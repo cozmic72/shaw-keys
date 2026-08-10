@@ -1,4 +1,4 @@
-# Virtual Keyboard
+# Shaw Keys
 
 An on-screen Shavian keyboard for the browser, with QWERTY-to-Shavian keystroke
 translation, a layout picker, and a visual layout editor. No build step, no
@@ -8,7 +8,7 @@ dependencies, no bundler — ES modules served as files.
 
 Three ES modules. A host loads **one**:
 
-- **`virtual-keyboard.js`** — the keyboard itself: rendering, dragging, layout
+- **`shaw-keys.js`** — the keyboard itself: rendering, dragging, layout
   loading, keystroke interception, the settings dialog. The entry point.
 - **`custom-layouts.js`** — the store for user-created layouts: validation,
   `localStorage` persistence, alphabet-coverage checks.
@@ -17,11 +17,11 @@ Three ES modules. A host loads **one**:
 The three depend on each other by `import`, including a cycle: `custom-layouts.js`
 derives its VS1 bonus targets from the editor's `SHAVIAN_PALETTE`, and the editor
 imports the store back. The browser resolves the whole graph before any module
-body runs, so importing `virtual-keyboard.js` brings the other two with it and a
+body runs, so importing `shaw-keys.js` brings the other two with it and a
 host cannot load a partial library.
 
 The library fetches the rest of its assets at runtime relative to its own
-`import.meta.url`: `virtual-keyboard.html`, `keyboard-settings.html` and
+`import.meta.url`: `shaw-keys.html`, `keyboard-settings.html` and
 `layout-editor.html`; the `keyboard_layout_*.json` of all five built-in layouts,
 which the settings mount preloads together because each names itself from its own
 file; and one `translations_*.json`. Everything in this
@@ -43,12 +43,12 @@ live at a path derived from the library's own URL.
 
 ### Fonts and staging
 
-No font file ships here. The `@font-face` rule in `virtual-keyboard.css` carries a
+No font file ships here. The `@font-face` rule in `shaw-keys.css` carries a
 `{{FONT_URL}}` token that `tools/stage.sh` resolves while copying the library into
 a consumer's docroot:
 
 ```sh
-virtual-keyboard/tools/stage.sh --font-url /fonts path/to/docroot/virtual-keyboard
+shaw-keys/tools/stage.sh --font-url /fonts path/to/docroot/shaw-keys
 ```
 
 `--font-url` names the directory serving `InterAlia-VF.otf`. It is mandatory and
@@ -67,13 +67,13 @@ a page surface. Its settings surfaces are the opposite: the layout picker and th
 editor are injected into the host document, so they follow the host's theme. That
 is driven off `prefers-color-scheme` and off a `data-theme` of `light` or `dark`
 on an ancestor, the explicit choice winning; a host that sets neither gets the OS
-preference. The `--vk-*` custom properties in `virtual-keyboard.css` hold both
+preference. The `--sk-*` custom properties in `shaw-keys.css` hold both
 palettes, so a host supplies nothing — but one overriding them re-themes both
 surfaces without touching a rule.
 
 ### Cache busting, and why there is no version
 
-`virtual-keyboard.js` reads a `?v=` parameter off its own `import.meta.url` and
+`shaw-keys.js` reads a `?v=` parameter off its own `import.meta.url` and
 appends it to every asset URL it fetches. That is the whole mechanism. The value
 is never reported, logged, or compared against anything — and `init`'s second
 parameter, despite its name, is ignored entirely; the query string is the only
@@ -88,7 +88,7 @@ library carries the version. Supply a value that changes when your own assets do
 typically your application's version:
 
 ```html
-<script type="module" src="virtual-keyboard/virtual-keyboard.js?v=1.4.2"></script>
+<script type="module" src="shaw-keys/shaw-keys.js?v=1.4.2"></script>
 ```
 
 The value rides on the entry point's URL and every asset fetched through
@@ -105,29 +105,29 @@ Stage the library into one directory served over `http(s)://` — not `file://` 
 passing the URL under which that host serves `InterAlia-VF.otf`:
 
 ```sh
-virtual-keyboard/tools/stage.sh --font-url /fonts public/virtual-keyboard
+shaw-keys/tools/stage.sh --font-url /fonts public/shaw-keys
 ```
 
 Then:
 
 ```html
-<link rel="stylesheet" href="virtual-keyboard/virtual-keyboard.css">
-<link rel="stylesheet" href="virtual-keyboard/layout-editor.css">
+<link rel="stylesheet" href="shaw-keys/shaw-keys.css">
+<link rel="stylesheet" href="shaw-keys/layout-editor.css">
 
 <div id="keyboardContainer"></div>
 <input id="practiceInput" type="text">
 
 <script type="module">
-    import { VirtualKeyboard as VK }
-        from './virtual-keyboard/virtual-keyboard.js?v=1.0.0';
+    import { ShawKeys }
+        from './shaw-keys/shaw-keys.js?v=1.0.0';
 
-    await VK.init(document.getElementById('keyboardContainer'), null, null, {
+    await ShawKeys.init(document.getElementById('keyboardContainer'), null, null, {
         script: 'shavian',
         dialect: 'british'
     });
 
-    VK.enableInterception(document.getElementById('practiceInput'));
-    VK.show();
+    ShawKeys.enableInterception(document.getElementById('practiceInput'));
+    ShawKeys.show();
 </script>
 ```
 
@@ -154,26 +154,32 @@ U+2019 the OS delivered.
 **The module boundary is now a mechanism.** Each file is an ES module, so its
 top-level declarations are private to it and only what it `export`s is reachable.
 The bare globals the previous plain scripts leaked — 118 functions from
-`virtual-keyboard.js`, 26 from `custom-layouts.js` — are gone. Anything that
+`shaw-keys.js`, 26 from `custom-layouts.js` — are gone. Anything that
 called one directly must move to the supported surface.
 
-The supported surface is the **`VirtualKeyboard`** export, and only the
+The supported surface is the **`ShawKeys`** export, and only the
 properties named at its top level. Its `_internal` sub-object is exactly what it
 says: present for the sibling modules and for tests, excluded from the contract.
 
-`CustomLayouts` and `LayoutEditor` are exported for `virtual-keyboard.js`'s use,
-not for yours. A consumer manages layouts through `VirtualKeyboard.mountSettings`
+`CustomLayouts` and `LayoutEditor` are exported for `shaw-keys.js`'s use,
+not for yours. A consumer manages layouts through `ShawKeys.mountSettings`
 and the entry points below.
 
 ### The `window` globals are a transition surface
 
-Each module also assigns its export to `window` — `window.VirtualKeyboard`,
+Each module also assigns its export to `window` — `window.ShawKeys`,
 `window.CustomLayouts`, `window.LayoutEditor` — so a consumer that has not yet
 moved to `import` keeps working. **These three assignments exist only to let the
 consumers migrate one at a time, and are to be deleted once all of them
 `import` instead.** Do not write new code against them.
 
-Read the definition of `VirtualKeyboard` at the foot of `virtual-keyboard.js` for
+Two globals point the other way: if the host page defines
+`activateVirtualKeyboardMode` or `updateVirtualKeyboardLabels`, the library calls
+them. They keep their pre-rename names because a consumer defines them
+(`shaw-type/src/site/main.js`), so renaming them here breaks that host on the
+next submodule bump. Rename them on both sides when that consumer ports.
+
+Read the definition of `ShawKeys` at the foot of `shaw-keys.js` for
 the full list. Each entry is a one-line alias to the function that implements it,
 and the doc comment on that function is the authority on its arguments. Grouped
 by purpose, the entry points are:
@@ -232,7 +238,7 @@ shaw-type keeps working, and new hosts should not rely on it.
 ### Built-in layouts
 
 Five: `imperial`, `igc`, `qwerty`, `2layer`, `jafl`. The registry is
-`BUILT_IN_LAYOUT_IDS_IN_MENU_ORDER` in `virtual-keyboard.js`; each layout carries
+`BUILT_IN_LAYOUT_IDS_IN_MENU_ORDER` in `shaw-keys.js`; each layout carries
 its own name in the `displayName` / `shavianDisplayName` fields of its
 `keyboard_layout_*.json`, the same metadata shape a custom layout uses.
 `listBuiltInLayouts` is on `_internal`, not the supported surface.
@@ -252,14 +258,14 @@ options; it rejects on an unknown script or an unreachable table.
 `setUiStrings(active, base)` overrides them for a host with its own pipeline.
 Resolution runs highest-first: `setUiStrings`'s `active`, then its `base`, then
 the shipped table for the selected script, then the English fallback baked into
-each `vkString` call.
+each `skString` call.
 
 ### `localStorage`
 
 Two keys, written independently:
 
-- **`io.joro.virtual-keyboard.Settings`** — the keyboard's own settings, by
-  `virtual-keyboard.js`. Currently the active `layout` and the dragged
+- **`io.joro.shaw-keys.Settings`** — the keyboard's own settings, by
+  `shaw-keys.js`. Currently the active `layout` and the dragged
   `position`; unknown keys in the stored object are preserved across writes.
 - **`customLayouts`** — the user's saved layouts, by `custom-layouts.js`. One
   blob mapping slug to layout record.
@@ -267,8 +273,17 @@ Two keys, written independently:
 The second name is unprefixed, so it will collide with any host that happens to
 use `customLayouts` for its own purposes. Nothing namespaces it.
 
-Neither key is migrated or versioned. Clearing them resets to `imperial` at the
-default position with no custom layouts.
+Neither key is versioned, and `customLayouts` is never migrated. Clearing them
+resets to `imperial` at the default position with no custom layouts.
+
+The settings key carries one migration, from the pre-rename
+`io.joro.virtual-keyboard.Settings`. It runs on load: if the old key is present
+and the new one is not, the value moves across and the old key is deleted. When
+both exist the new one wins untouched — a user who has already run Shaw Keys has
+current state, and reviving stale settings over it would lose more than it
+restored. A legacy value that is unparseable or not a JSON object raises rather
+than resetting to defaults, and is left in place for inspection. Nothing else
+was renamed, so this is the only migration the rename needs.
 
 ## Contributing
 
@@ -285,6 +300,7 @@ under `tools/`, run directly and reporting failure through its exit code:
 node tools/quote_substitution_test.mjs
 node tools/unbound_quote_test.mjs
 node tools/destination_routing_test.mjs
+node tools/settings_migration_test.mjs
 ```
 
 The wider suites that cover this code (`layout_editor_test.mjs` and its

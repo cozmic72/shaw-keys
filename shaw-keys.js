@@ -1,10 +1,10 @@
-// Virtual Keyboard Functionality
+// Shaw Keys Functionality
 
 import { CustomLayouts } from './custom-layouts.js';
 import { LayoutEditor } from './layout-editor.js';
 
 // Cache-busting value, read from this module's own URL query string (?v=...).
-const VIRTUAL_KEYBOARD_VERSION = new URL(import.meta.url).searchParams.get('v') || '';
+const SHAW_KEYS_VERSION = new URL(import.meta.url).searchParams.get('v') || '';
 
 // Optional URL resolver callback for browser extensions
 let resourceUrlResolver = null;
@@ -318,13 +318,13 @@ async function preloadBuiltInLayouts() {
 }
 
 // ---------------------------------------------------------------------------
-// Dialog UI strings (bilingual). The library SHIPS its own vk* tables
+// Dialog UI strings (bilingual). The library SHIPS its own sk* tables
 // (translations_{latin,british,american}.json beside this file, generated from
 // translations.csv) and loads them via setScript. A host with its own pipeline
 // may override them with setUiStrings. Resolution order, highest first:
 //   1. host override (setUiStrings active, then its base)
 //   2. the library's own table for the selected script/dialect
-//   3. the hardcoded English fallback passed to each vkString call
+//   3. the hardcoded English fallback passed to each skString call
 // The library renders keys into its OWN dialog DOM using the SAME
 // key→textContent pattern as the host's updateUIWithTranslations. One pipeline.
 // ---------------------------------------------------------------------------
@@ -341,7 +341,7 @@ let libraryStrings = {};
 // table can carry.
 let libraryScript = 'latin';
 
-const VK_TRANSLATION_FILES = {
+const SK_TRANSLATION_FILES = {
     latin: 'translations_latin.json',
     british: 'translations_british.json',
     american: 'translations_american.json',
@@ -349,7 +349,7 @@ const VK_TRANSLATION_FILES = {
 
 // Look up a UI string by key, walking the resolution order above.
 // {{token}} placeholders are filled from `vars`.
-function vkString(key, fallback, vars) {
+function skString(key, fallback, vars) {
     let text = (uiStrings.active && uiStrings.active[key] != null)
         ? uiStrings.active[key]
         : (uiStrings.base && uiStrings.base[key] != null ? uiStrings.base[key]
@@ -373,37 +373,37 @@ function vkString(key, fallback, vars) {
 function applyUiStrings(root) {
     if (!root) return;
     root.querySelectorAll('[data-i18n]').forEach(el => {
-        el.textContent = vkString(el.getAttribute('data-i18n'), el.textContent);
+        el.textContent = skString(el.getAttribute('data-i18n'), el.textContent);
     });
     root.querySelectorAll('[data-i18n-title]').forEach(el => {
-        el.title = vkString(el.getAttribute('data-i18n-title'), el.title);
+        el.title = skString(el.getAttribute('data-i18n-title'), el.title);
     });
     root.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-        el.placeholder = vkString(el.getAttribute('data-i18n-placeholder'), el.placeholder);
+        el.placeholder = skString(el.getAttribute('data-i18n-placeholder'), el.placeholder);
     });
 }
 
-// Re-apply strings to every currently-mounted vk surface (the dialog + any
+// Re-apply strings to every currently-mounted Shaw Keys surface (the dialog + any
 // embedded mount) and re-render the dynamic bits (picker list, editor). Called by
 // setUiStrings so a live script/dialect change updates open surfaces immediately.
 function refreshUiStrings() {
-    document.querySelectorAll('#vk-settings-dialog, [data-vk-group]').forEach(root => {
+    document.querySelectorAll('#sk-settings-dialog, [data-sk-group]').forEach(root => {
         applyUiStrings(root);
     });
-    // Dynamic content (rows, coverage, editor line) is rebuilt from vkString, so
+    // Dynamic content (rows, coverage, editor line) is rebuilt from skString, so
     // re-render the mounted pickers and the editor if open.
-    document.querySelectorAll('[data-vk-group]').forEach(container => {
-        if (container.querySelector('#vk-layout-list')) {
+    document.querySelectorAll('[data-sk-group]').forEach(container => {
+        if (container.querySelector('#sk-layout-list')) {
             renderPickerList(container);
-            // The base-picker overlay is rebuilt from vkString each time it opens
+            // The base-picker overlay is rebuilt from skString each time it opens
             // (openBasePicker/listCloneBases), so no persistent relabel here.
         }
     });
-    const dialogTitle = document.querySelector('#vk-dialog-title');
-    if (dialogTitle) dialogTitle.textContent = vkString(
-        isEditorViewActive() ? 'vkEditorTitle' : 'vkDialogTitle', dialogTitle.textContent);
-    const dialogBack = document.querySelector('#vk-dialog-back');
-    if (dialogBack) dialogBack.textContent = vkString('vkDialogBack', dialogBack.textContent);
+    const dialogTitle = document.querySelector('#sk-dialog-title');
+    if (dialogTitle) dialogTitle.textContent = skString(
+        isEditorViewActive() ? 'skEditorTitle' : 'skDialogTitle', dialogTitle.textContent);
+    const dialogBack = document.querySelector('#sk-dialog-back');
+    if (dialogBack) dialogBack.textContent = skString('skDialogBack', dialogBack.textContent);
     LayoutEditor.refreshStrings();
     // The docked keyboard title tracks the active script too — retitle in place
     // (no full relabel; that needs the layout map, reloaded elsewhere on switch).
@@ -415,7 +415,7 @@ function refreshUiStrings() {
 
 // Public: OVERRIDE the dialog's UI strings with the host's own tables, taking
 // precedence over the library's shipped ones. `active` is the current-script
-// table; `base` fills any vk* key the active table doesn't carry. Re-applies to
+// table; `base` fills any sk* key the active table doesn't carry. Re-applies to
 // open surfaces.
 function setUiStrings(active, base) {
     uiStrings = { active: active || {}, base: base || active || {} };
@@ -427,9 +427,9 @@ function setUiStrings(active, base) {
 // only): 'british' | 'american'. Re-applies to open surfaces.
 async function setScript(script, dialect) {
     const file = script === 'shavian'
-        ? VK_TRANSLATION_FILES[dialect]
-        : VK_TRANSLATION_FILES[script];
-    if (!file) throw new Error(`Unknown virtual-keyboard script/dialect: ${script}/${dialect}`);
+        ? SK_TRANSLATION_FILES[dialect]
+        : SK_TRANSLATION_FILES[script];
+    if (!file) throw new Error(`Unknown Shaw Keys script/dialect: ${script}/${dialect}`);
 
     const url = getResourceUrl(file);
     const response = await fetch(url);
@@ -448,7 +448,7 @@ function preferredScriptLabel(latin, shavian) {
 }
 
 // A custom layout's display name in the active script, or null when `id` names
-// no known custom. The single name-resolution point for every vk surface, so the
+// no known custom. The single name-resolution point for every Shaw Keys surface, so the
 // picker, the clone-base list and the docked title can't disagree.
 function customLayoutLabel(id) {
     const CL = CustomLayouts;
@@ -462,13 +462,13 @@ function customLayoutLabel(id) {
 // (Trimmed from the old multi-sentence panel copy — the live preview now carries
 // the visual detail the screenshots used to.)
 // Built-in id -> { key, en }: the description's translation key + its English
-// fallback (so it still reads before the vk* keys are regenerated into Shavian).
+// fallback (so it still reads before the sk* keys are regenerated into Shavian).
 const LAYOUT_DESCRIPTIONS = {
-    'imperial': { key: 'vkDescImperial', en: 'The original Imperial Good Companion typewriter layout, with every compound on its own key.' },
-    'igc': { key: 'vkDescIgc', en: 'Imperial, made compact: most compounds are built from their parts rather than given a key.' },
-    'qwerty': { key: 'vkDescQwerty', en: 'Familiar QWERTY positions — easiest transition from an existing habit.' },
-    '2layer': { key: 'vkDesc2layer', en: 'Compact: Shift reaches the full set, related glyphs paired on a key.' },
-    'jafl': { key: 'vkDescJafl', en: 'Just Another Friggin’ Layout — key placement tuned for English letter frequency.' },
+    'imperial': { key: 'skDescImperial', en: 'The original Imperial Good Companion typewriter layout, with every compound on its own key.' },
+    'igc': { key: 'skDescIgc', en: 'Imperial, made compact: most compounds are built from their parts rather than given a key.' },
+    'qwerty': { key: 'skDescQwerty', en: 'Familiar QWERTY positions — easiest transition from an existing habit.' },
+    '2layer': { key: 'skDesc2layer', en: 'Compact: Shift reaches the full set, related glyphs paired on a key.' },
+    'jafl': { key: 'skDescJafl', en: 'Just Another Friggin’ Layout — key placement tuned for English letter frequency.' },
 };
 
 // Built-in layouts whose physical shape is the imperial family (a distinct row
@@ -499,9 +499,9 @@ function isBuiltInLayoutName(name) {
 
 // Get current keyboard state
 function getKeyboardState() {
-    const keyboard = document.getElementById('virtualKeyboard');
+    const keyboard = document.getElementById('shawKeys');
     const isVisible = keyboard && keyboard.style.display !== 'none';
-    const settings = loadVirtualKeyboardSettings();
+    const settings = loadShawKeysSettings();
 
     return {
         visible: isVisible,
@@ -527,14 +527,14 @@ function getResourceUrl(relativePath) {
 
 // Add version parameter to URL for cache busting
 function versionedUrl(url) {
-    if (VIRTUAL_KEYBOARD_VERSION) {
+    if (SHAW_KEYS_VERSION) {
         const separator = url.includes('?') ? '&' : '?';
-        return `${url}${separator}v=${VIRTUAL_KEYBOARD_VERSION}`;
+        return `${url}${separator}v=${SHAW_KEYS_VERSION}`;
     }
     return url;
 }
 
-// Initialize virtual keyboard - loads HTML and sets up
+// Initialize Shaw Keys - loads HTML and sets up
 // Parameters:
 //   containerElement - DOM element to contain the keyboard
 //   resourceVersion - version string (unused, kept for compatibility)
@@ -543,7 +543,7 @@ function versionedUrl(url) {
 //     - autoShowOnFocus: boolean - automatically show/hide keyboard based on input focus
 //     - script: 'latin' | 'shavian' - which shipped UI-string table to load
 //     - dialect: 'british' | 'american' - dialect for script: 'shavian'
-async function initVirtualKeyboard(containerElement, resourceVersion, urlResolver, options) {
+async function initShawKeys(containerElement, resourceVersion, urlResolver, options) {
     // Set the resolver if provided
     if (urlResolver) {
         resourceUrlResolver = urlResolver;
@@ -562,10 +562,10 @@ async function initVirtualKeyboard(containerElement, resourceVersion, urlResolve
     }
 
     try {
-        const url = getResourceUrl('virtual-keyboard.html');
+        const url = getResourceUrl('shaw-keys.html');
         const response = await fetch(url);
         if (!response.ok) {
-            console.error('Failed to load virtual keyboard HTML');
+            console.error('Failed to load Shaw Keys HTML');
             return false;
         }
         const html = await response.text();
@@ -580,7 +580,7 @@ async function initVirtualKeyboard(containerElement, resourceVersion, urlResolve
             closeButton.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                hideVirtualKeyboard();
+                hideShawKeys();
             });
         }
 
@@ -592,7 +592,7 @@ async function initVirtualKeyboard(containerElement, resourceVersion, urlResolve
 
         return true;
     } catch (error) {
-        console.error('Error loading virtual keyboard:', error);
+        console.error('Error loading Shaw Keys:', error);
         return false;
     }
 }
@@ -610,13 +610,13 @@ function isEditableElement(el) {
 
 // Set up listeners to auto-show/hide keyboard based on input focus
 function setupAutoShowOnFocus() {
-    console.log('[Virtual Keyboard] Setting up auto-show on focus');
+    console.log('[Shaw Keys] Setting up auto-show on focus');
 
     // Use event delegation on document for better performance
     document.addEventListener('focusin', (e) => {
         if (isEditableElement(e.target)) {
-            console.log('[Virtual Keyboard] Editable element focused, showing keyboard');
-            showVirtualKeyboard();
+            console.log('[Shaw Keys] Editable element focused, showing keyboard');
+            showShawKeys();
         }
     }, true); // Use capture phase
 
@@ -627,8 +627,8 @@ function setupAutoShowOnFocus() {
             setTimeout(() => {
                 // Double-check that no editable element has focus
                 if (!isEditableElement(document.activeElement)) {
-                    console.log('[Virtual Keyboard] No editable element focused, hiding keyboard');
-                    hideVirtualKeyboard();
+                    console.log('[Shaw Keys] No editable element focused, hiding keyboard');
+                    hideShawKeys();
                 }
             }, 10);
         }
@@ -686,7 +686,7 @@ async function getKeyboardLayout(layoutName) {
 
 // Apply a layout to the keyboard (loads, updates labels, makes clickable, updates interception)
 async function setKeyboardLayout(layoutName) {
-    console.log('[Virtual Keyboard] Applying layout:', layoutName);
+    console.log('[Shaw Keys] Applying layout:', layoutName);
 
     // Load the layout data FIRST, and only persist the choice once it succeeds —
     // otherwise a failed switch (e.g. a custom layout deleted in another tab)
@@ -696,16 +696,16 @@ async function setKeyboardLayout(layoutName) {
     try {
         layout = await getKeyboardLayout(layoutName);
     } catch (error) {
-        console.error('[Virtual Keyboard] Failed to load layout:', layoutName, error);
+        console.error('[Shaw Keys] Failed to load layout:', layoutName, error);
         return false;
     }
     if (!layout || !layout.keys) {
-        console.error('[Virtual Keyboard] Failed to load layout:', layoutName);
+        console.error('[Shaw Keys] Failed to load layout:', layoutName);
         return false;
     }
 
     // Persist the (now known-good) layout choice.
-    saveVirtualKeyboardLayout(layoutName);
+    saveShawKeysLayout(layoutName);
 
     // Track current layout
     currentLayoutName = layoutName;
@@ -717,7 +717,7 @@ async function setKeyboardLayout(layoutName) {
     // Update interception for any active inputs
     setInterceptionLayout(layoutName);
 
-    console.log('[Virtual Keyboard] Layout applied successfully:', layoutName);
+    console.log('[Shaw Keys] Layout applied successfully:', layoutName);
     return true;
 }
 
@@ -755,11 +755,11 @@ function dispatchInputEvent(input, type, data = null) {
 // Translate input event data from Latin to Shavian if needed
 // This is a decorator function that index.html can use
 // Returns: { eventData: string, browserInput: string }
-function translateInputEvent(e, browserInput, currentLayout, useVirtualKeyboard, debugFn) {
+function translateInputEvent(e, browserInput, currentLayout, useShawKeys, debugFn) {
     let eventData = e.data || '';
 
-    // Virtual keyboard: translate QWERTY input to Shavian if needed
-    if (useVirtualKeyboard && e.inputType === 'insertText' && eventData.length > 0) {
+    // Shaw Keys: translate QWERTY input to Shavian if needed
+    if (useShawKeys && e.inputType === 'insertText' && eventData.length > 0) {
         const layout = KEYBOARD_MAPS[currentLayout];
         const keyboardMap = layout ? layout.keys : null;
         if (keyboardMap) {
@@ -799,7 +799,7 @@ let isShiftActive = false;
 let keyboardPosition = { x: 0, y: 0 };
 
 // On narrow screens the keyboard is docked to the bottom edge by CSS
-// (see the `@media (max-width: 768px)` block in virtual-keyboard.css, which
+// (see the `@media (max-width: 768px)` block in shaw-keys.css, which
 // pins it with position:fixed; bottom:0; left:0; right:0). In that docked
 // mode the drag transform must NOT displace it, or the top (number) row is
 // clipped. This query must stay in sync with that CSS breakpoint.
@@ -808,10 +808,32 @@ function isKeyboardDocked() {
     return window.matchMedia(KEYBOARD_DOCKED_MEDIA_QUERY).matches;
 }
 
-const VK_SETTINGS_KEY = 'io.joro.virtual-keyboard.Settings';
+const SK_SETTINGS_KEY = 'io.joro.shaw-keys.Settings';
+
+// The settings key before the library was renamed from "virtual keyboard" to
+// Shaw Keys. Deployed installations hold their layout and position under it.
+const LEGACY_SETTINGS_KEY = 'io.joro.virtual-keyboard.Settings';
+
+// Move the pre-rename settings to the current key, once. A corrupt legacy value
+// raises and is left in place: discarding it would destroy the only copy of the
+// user's settings. Only the settings key moved in the rename — `customLayouts`
+// is unprefixed and was never renamed, so custom layouts need no migration.
+function migrateLegacySettings() {
+    const legacy = localStorage.getItem(LEGACY_SETTINGS_KEY);
+    if (legacy === null || localStorage.getItem(SK_SETTINGS_KEY) !== null) return;
+
+    const parsed = JSON.parse(legacy);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error(`Legacy settings under ${LEGACY_SETTINGS_KEY} are corrupt (expected a JSON object).`);
+    }
+    localStorage.setItem(SK_SETTINGS_KEY, legacy);
+    localStorage.removeItem(LEGACY_SETTINGS_KEY);
+}
+
+migrateLegacySettings();
 
 // Default settings
-const VK_DEFAULT_SETTINGS = {
+const SK_DEFAULT_SETTINGS = {
     layout: 'imperial',
     position: { x: 0, y: 0 }
 };
@@ -819,7 +841,7 @@ const VK_DEFAULT_SETTINGS = {
 // Load keyboard state from localStorage (using unified settings)
 function loadKeyboardState() {
     try {
-        const saved = localStorage.getItem(VK_SETTINGS_KEY);
+        const saved = localStorage.getItem(SK_SETTINGS_KEY);
         if (saved) {
             const settings = JSON.parse(saved);
             keyboardPosition = settings.position || { x: 0, y: 0 };
@@ -832,23 +854,23 @@ function loadKeyboardState() {
 // Save keyboard state to localStorage (using unified settings)
 function saveKeyboardState() {
     try {
-        const saved = localStorage.getItem(VK_SETTINGS_KEY);
-        let settings = VK_DEFAULT_SETTINGS;
+        const saved = localStorage.getItem(SK_SETTINGS_KEY);
+        let settings = SK_DEFAULT_SETTINGS;
         if (saved) {
-            settings = { ...VK_DEFAULT_SETTINGS, ...JSON.parse(saved) };
+            settings = { ...SK_DEFAULT_SETTINGS, ...JSON.parse(saved) };
         }
         settings.position = keyboardPosition;
-        localStorage.setItem(VK_SETTINGS_KEY, JSON.stringify(settings));
+        localStorage.setItem(SK_SETTINGS_KEY, JSON.stringify(settings));
     } catch (e) {
         console.error('Failed to save keyboard state:', e);
     }
 }
 
-// Reset keyboard state (called when virtual keyboard is toggled off)
+// Reset keyboard state (called when Shaw Keys is toggled off)
 function resetKeyboardState() {
     keyboardPosition = { x: 0, y: 0 };
     saveKeyboardState(); // Save the reset position
-    const keyboard = document.getElementById('virtualKeyboard');
+    const keyboard = document.getElementById('shawKeys');
     if (keyboard) {
         updateKeyboardTransform(keyboard);
     }
@@ -868,7 +890,7 @@ function updateKeyboardTransform(el) {
 
 // Make keyboard draggable
 function makeKeyboardDraggable() {
-    const keyboard = document.getElementById('virtualKeyboard');
+    const keyboard = document.getElementById('shawKeys');
     const header = keyboard.querySelector('.keyboard-header');
     let isDragging = false;
     let startX, startY;
@@ -935,8 +957,8 @@ function makeKeyboardDraggable() {
 }
 
 // Show/hide keyboard - these are now just UI helpers called from main script
-function showVirtualKeyboard() {
-    const keyboard = document.getElementById('virtualKeyboard');
+function showShawKeys() {
+    const keyboard = document.getElementById('shawKeys');
     if (keyboard) {
         keyboard.style.display = 'block';
 
@@ -966,8 +988,8 @@ function showVirtualKeyboard() {
     }
 }
 
-function hideVirtualKeyboard() {
-    const keyboard = document.getElementById('virtualKeyboard');
+function hideShawKeys() {
+    const keyboard = document.getElementById('shawKeys');
     if (keyboard) {
         keyboard.style.display = 'none';
         clearLigaturePreview();
@@ -975,25 +997,25 @@ function hideVirtualKeyboard() {
     }
 }
 
-function toggleVirtualKeyboard() {
-    const keyboard = document.getElementById('virtualKeyboard');
+function toggleShawKeys() {
+    const keyboard = document.getElementById('shawKeys');
     if (keyboard) {
         const isVisible = keyboard.style.display !== 'none';
         if (isVisible) {
-            hideVirtualKeyboard();
+            hideShawKeys();
         } else {
-            showVirtualKeyboard();
+            showShawKeys();
         }
     }
 }
 
 // Set callback for state changes (replaces old visibility callback)
-function setVirtualKeyboardStateCallback(callback) {
+function setShawKeysStateCallback(callback) {
     onStateChange = callback;
 }
 
 // Deprecated: kept for backwards compatibility
-function setVirtualKeyboardVisibilityCallback(callback) {
+function setShawKeysVisibilityCallback(callback) {
     onStateChange = (state) => callback(state.visible);
 }
 
@@ -1106,7 +1128,7 @@ function updateKeyboardLabels(keyboardMap, layoutName, layout) {
 // ---------------------------------------------------------------------------
 // Layout preview — a scaled, non-interactive HTML render of a bare layout, for
 // the settings picker and the roster. Reuses the ONE keyboard template (clone of
-// #virtualKeyboard .keyboard-body) and the ONE legend renderer (renderKeyLegends)
+// #shawKeys .keyboard-body) and the ONE legend renderer (renderKeyLegends)
 // so a preview cap is structurally + stylistically identical to the live
 // keyboard, minus input. Works for built-ins and customs alike (both are a bare
 // { keys } map). Shift-flip is a pure re-stamp of the same clone.
@@ -1154,10 +1176,10 @@ function renderLayoutPreview(hostEl, layoutName, bareLayout, layer) {
     if (!bareLayout || !bareLayout.keys) {
         throw new Error('renderLayoutPreview: bare layout with keys is required');
     }
-    const template = document.querySelector('#virtualKeyboard .keyboard-body');
+    const template = document.querySelector('#shawKeys .keyboard-body');
     if (!template) {
         throw new Error('renderLayoutPreview: keyboard template unavailable ' +
-            '(no #virtualKeyboard .keyboard-body).');
+            '(no #shawKeys .keyboard-body).');
     }
     const clone = template.cloneNode(true);
     for (const cls of clone.className.split(/\s+/)) {
@@ -1165,13 +1187,13 @@ function renderLayoutPreview(hostEl, layoutName, bareLayout, layer) {
     }
     const isImperial = structuralFamilyOf(layoutName, bareLayout) === 'imperial';
     clone.classList.toggle('structure-imperial', isImperial);
-    clone.classList.add('vk-preview-body');
+    clone.classList.add('sk-preview-body');
 
     stampPreviewLayer(clone, bareLayout, layer);
 
     hostEl.textContent = '';
     const scaler = document.createElement('div');
-    scaler.className = 'vk-preview-scaler';
+    scaler.className = 'sk-preview-scaler';
     scaler.appendChild(clone);
     hostEl.appendChild(scaler);
     // Defer the measure to the next frame: a just-appended clone can report a
@@ -1274,7 +1296,7 @@ function makeKeysClickable(keyboardMap) {
             e.preventDefault();
             const keyValue = newKey.getAttribute('data-key');
 
-            // Notify that user is using virtual keyboard (to prevent OS keyboard)
+            // Notify that user is using Shaw Keys (to prevent OS keyboard)
             if (typeof activateVirtualKeyboardMode === 'function') {
                 activateVirtualKeyboardMode();
             }
@@ -1384,7 +1406,7 @@ function makeKeysClickable(keyboardMap) {
             e.preventDefault();
             const keyValue = newKey.getAttribute('data-key');
 
-            // Notify that user is using virtual keyboard (to prevent OS keyboard)
+            // Notify that user is using Shaw Keys (to prevent OS keyboard)
             if (typeof activateVirtualKeyboardMode === 'function') {
                 activateVirtualKeyboardMode();
             }
@@ -1436,11 +1458,11 @@ function makeKeysClickable(keyboardMap) {
 }
 
 // Initialize keyboard UI
-// Note: makeKeyboardDraggable() is called from initVirtualKeyboard() after HTML loads
+// Note: makeKeyboardDraggable() is called from initShawKeys() after HTML loads
 const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 
 // How the show/hide shortcut is written on this platform, for the host to append
-// to its "Show virtual keyboard" label. Not a translated string: it names a
+// to its "Show Shaw Keys" label. Not a translated string: it names a
 // modifier key, which is platform-dependent and identical in every language.
 function toggleShortcutLabel() {
     return isMac ? '⌘K' : 'Ctrl+K';
@@ -1452,7 +1474,7 @@ function setupKeyboardShortcuts() {
         // Cmd+K (Mac) / Ctrl+K (Windows, Linux) toggles the keyboard.
         if (e.key === 'k' && (isMac ? e.metaKey : e.ctrlKey)) {
             e.preventDefault();
-            toggleVirtualKeyboard();
+            toggleShawKeys();
             return;
         }
 
@@ -1506,72 +1528,72 @@ if (document.readyState === 'loading') {
 }
 
 // ============================================================================
-// Virtual Keyboard Settings Management
+// Shaw Keys Settings Management
 // ============================================================================
 
 // Load settings from localStorage
-function loadVirtualKeyboardSettings() {
+function loadShawKeysSettings() {
     try {
-        const stored = localStorage.getItem(VK_SETTINGS_KEY);
+        const stored = localStorage.getItem(SK_SETTINGS_KEY);
         if (stored) {
             const settings = JSON.parse(stored);
-            return { ...VK_DEFAULT_SETTINGS, ...settings };
+            return { ...SK_DEFAULT_SETTINGS, ...settings };
         }
     } catch (error) {
-        console.error('Error loading virtual keyboard settings:', error);
+        console.error('Error loading Shaw Keys settings:', error);
     }
-    return { ...VK_DEFAULT_SETTINGS };
+    return { ...SK_DEFAULT_SETTINGS };
 }
 
 // Save settings to localStorage
-function saveVirtualKeyboardSettings(settings) {
+function saveShawKeysSettings(settings) {
     try {
-        localStorage.setItem(VK_SETTINGS_KEY, JSON.stringify(settings));
+        localStorage.setItem(SK_SETTINGS_KEY, JSON.stringify(settings));
     } catch (error) {
-        console.error('Error saving virtual keyboard settings:', error);
+        console.error('Error saving Shaw Keys settings:', error);
     }
 }
 
 // Save keyboard layout choice
-function saveVirtualKeyboardLayout(layout) {
-    const settings = loadVirtualKeyboardSettings();
+function saveShawKeysLayout(layout) {
+    const settings = loadShawKeysSettings();
     settings.layout = layout;
-    saveVirtualKeyboardSettings(settings);
+    saveShawKeysSettings(settings);
     notifyStateChange();
 }
 
 // Get current keyboard layout
-function getVirtualKeyboardLayout() {
-    const settings = loadVirtualKeyboardSettings();
+function getShawKeysLayout() {
+    const settings = loadShawKeysSettings();
     return settings.layout;
 }
 
 // Per-surface radio-group name so multiple mounted pickers (dialog + embedded
-// tab) never merge into one document-scope group. loadVirtualKeyboardSettingsHTML
-// mints a unique name once and stamps it on the mount container (data-vk-group);
+// tab) never merge into one document-scope group. loadShawKeysSettingsHTML
+// mints a unique name once and stamps it on the mount container (data-sk-group);
 // every reader resolves it by walking up to that container, so the built-in
 // radios and roster radios of ONE surface always share a name — and it stays
-// stable whether the outer container or the #vk-view-picker child is passed.
+// stable whether the outer container or the #sk-view-picker child is passed.
 let radioGroupSeq = 0;
 function mintRadioGroupName(containerElement) {
-    const name = 'vk-layout--' + (++radioGroupSeq);
-    containerElement.dataset.vkGroup = name;
+    const name = 'sk-layout--' + (++radioGroupSeq);
+    containerElement.dataset.skGroup = name;
     return name;
 }
 function layoutRadioGroupName(el) {
-    return pickerMount(el).dataset.vkGroup;
+    return pickerMount(el).dataset.skGroup;
 }
 
-// The canonical mount element for a picker surface: the [data-vk-group] host that
+// The canonical mount element for a picker surface: the [data-sk-group] host that
 // mintRadioGroupName stamped. Callers may hand us the outer mount OR the
-// #vk-view-picker child (showPickerView passes the child); both must resolve to
+// #sk-view-picker child (showPickerView passes the child); both must resolve to
 // the ONE element that carries the geo class, ResizeObserver, and picker-state
 // WeakMap key — otherwise the dialog surface silently forks a second identity and
 // its geometry/preview-layer/pulse wiring goes missing.
 function pickerMount(el) {
-    const host = el.closest('[data-vk-group]');
+    const host = el.closest('[data-sk-group]');
     if (!host) {
-        throw new Error('pickerMount: element is not inside a mounted vk picker');
+        throw new Error('pickerMount: element is not inside a mounted Shaw Keys picker');
     }
     return host;
 }
@@ -1580,7 +1602,7 @@ function pickerMount(el) {
 // build the flat radio list (built-in + custom rows) with the inline preview, and
 // wire the create/import bar. Selecting any radio applies the layout and fires
 // onLayoutsChanged so the host re-applies (word lists etc.).
-async function loadVirtualKeyboardSettingsHTML(containerElement) {
+async function loadShawKeysSettingsHTML(containerElement) {
     try {
         const url = getResourceUrl('keyboard-settings.html');
         const response = await fetch(url);
@@ -1624,7 +1646,7 @@ async function mountSettings(containerElement) {
     if (!containerElement) {
         throw new Error('mountSettings: container element is required');
     }
-    const ok = await loadVirtualKeyboardSettingsHTML(containerElement);
+    const ok = await loadShawKeysSettingsHTML(containerElement);
     if (!ok) {
         throw new Error('mountSettings: failed to load keyboard settings HTML');
     }
@@ -1704,7 +1726,7 @@ function pickerGeometry(containerElement) {
     return width >= PICKER_WIDE_AT_PX ? 'wide' : 'narrow';
 }
 
-// Observe the mount's size: recompute the geometry (stamp a vk-geo-* class), and
+// Observe the mount's size: recompute the geometry (stamp a sk-geo-* class), and
 // re-render the list when the geometry FLIPS (radios↔dropdown is a render choice,
 // not just CSS). Also re-scale the live preview to the new width. One observer per
 // surface; looked-up fresh each callback so it survives re-renders.
@@ -1720,8 +1742,8 @@ function installPickerResponsiveness(containerElement) {
         const geometryFlipped = geometry !== lastGeometry;
         lastGeometry = geometry;
         lastWidth = width;
-        containerElement.classList.remove('vk-geo-wide', 'vk-geo-narrow', 'vk-geo-mobile');
-        containerElement.classList.add('vk-geo-' + geometry);
+        containerElement.classList.remove('sk-geo-wide', 'sk-geo-narrow', 'sk-geo-mobile');
+        containerElement.classList.add('sk-geo-' + geometry);
         // radios↔dropdown differ structurally — rebuild the list on a flip.
         if (geometryFlipped) {
             renderPickerList(containerElement);
@@ -1744,9 +1766,9 @@ function installPickerResponsiveness(containerElement) {
 
 // Re-scale whichever preview is currently mounted to the surface's width.
 function rescalePreview(containerElement) {
-    const host = containerElement.querySelector('.vk-preview-host');
-    const scaler = host && host.querySelector('.vk-preview-scaler');
-    const body = scaler && scaler.querySelector('.vk-preview-body');
+    const host = containerElement.querySelector('.sk-preview-host');
+    const scaler = host && host.querySelector('.sk-preview-scaler');
+    const body = scaler && scaler.querySelector('.sk-preview-body');
     if (host && scaler && body) scalePreviewToWidth(host, scaler, body);
 }
 
@@ -1756,9 +1778,9 @@ function rescalePreview(containerElement) {
 // description NEVER overrides a built-in's canned text.
 function previewDescription(layoutId) {
     const desc = LAYOUT_DESCRIPTIONS[layoutId];
-    if (desc !== undefined) return vkString(desc.key, desc.en);
+    if (desc !== undefined) return skString(desc.key, desc.en);
     const record = CustomLayouts.getCustomLayout(layoutId);
-    if (!record) return vkString('vkCustomUnavailable', 'Custom keyboard (unavailable).');
+    if (!record) return skString('skCustomUnavailable', 'Custom keyboard (unavailable).');
     return preferredScriptLabel(record.description || '', record.shavianDescription);
 }
 
@@ -1774,13 +1796,13 @@ function renderCoverageBadge(descEl, layoutId) {
     const complete = CustomLayouts.coverage(record.layout).missing.length === 0;
     const badge = document.createElement('span');
     if (complete) {
-        badge.className = 'vk-cov-badge vk-cov-complete';
+        badge.className = 'sk-cov-badge sk-cov-complete';
         badge.textContent = '✓';
-        badge.setAttribute('aria-label', vkString('vkCovCompleteLabel', 'Complete'));
+        badge.setAttribute('aria-label', skString('skCovCompleteLabel', 'Complete'));
         badge.title = badge.getAttribute('aria-label');
     } else {
-        badge.className = 'vk-cov-badge vk-cov-incomplete';
-        badge.textContent = '⚠ ' + vkString('vkCovIncomplete', 'incomplete');
+        badge.className = 'sk-cov-badge sk-cov-incomplete';
+        badge.textContent = '⚠ ' + skString('skCovIncomplete', 'incomplete');
     }
     // Separate from the description only when there IS one — an unset description
     // must not leave a leading space before the badge.
@@ -1792,7 +1814,7 @@ function renderCoverageBadge(descEl, layoutId) {
 // expanded. A layout with NO ligatures (e.g. 2layer) renders no section at all —
 // the whole label+body block is hidden, no dead heading.
 function renderLigatureSection(sectionEl, bare) {
-    const bodyEl = sectionEl.querySelector('.vk-lig-body');
+    const bodyEl = sectionEl.querySelector('.sk-lig-body');
     bodyEl.textContent = '';
     const ligatures = bare.ligatures || {};
     const results = Object.keys(ligatures);
@@ -1804,7 +1826,7 @@ function renderLigatureSection(sectionEl, bare) {
     for (const result of results) {
         for (const seq of ligatures[result]) {
             const item = document.createElement('span');
-            item.className = 'vk-lig-item';
+            item.className = 'sk-lig-item';
             item.textContent = `${seq.join(' + ')} → ${result}`;
             bodyEl.appendChild(item);
         }
@@ -1821,23 +1843,23 @@ async function renderInlineDetail(containerElement, detailEl, layoutId, pulseShi
     // (pulseShift=false) keeps whatever layer the user toggled to.
     if (pulseShift) state.layer = 'base';
     state.layoutId = layoutId;
-    const descEl = detailEl.querySelector('.vk-detail-desc');
+    const descEl = detailEl.querySelector('.sk-detail-desc');
     descEl.textContent = previewDescription(layoutId);
     renderCoverageBadge(descEl, layoutId);
     const bare = await getKeyboardLayout(layoutId);
     if (!bare) throw new Error(`renderInlineDetail: layout ${layoutId} did not resolve`);
-    const host = detailEl.querySelector('.vk-preview-host');
+    const host = detailEl.querySelector('.sk-preview-host');
     renderLayoutPreview(host, layoutId, bare, state.layer);
     // The Shift CAPS (left + right) are rebuilt by renderLayoutPreview every
     // render, so their click listeners must be (re)bound here. Bind BOTH so a tap
     // on either shift flips the layer. The host keydown listener is bound ONCE at
     // mount (mountInlineDetail) since the host persists across flip re-renders —
     // binding it per-render would accumulate and double-flip physical Shift.
-    for (const shiftKey of host.querySelectorAll('.vk-preview-body .key[data-key="Shift"]')) {
+    for (const shiftKey of host.querySelectorAll('.sk-preview-body .key[data-key="Shift"]')) {
         shiftKey.addEventListener('click', () => flipPreviewLayer(containerElement, detailEl, layoutId));
     }
     if (pulseShift) armShiftPulse(host);
-    renderLigatureSection(detailEl.querySelector('.vk-lig-section'), bare);
+    renderLigatureSection(detailEl.querySelector('.sk-lig-section'), bare);
 }
 
 // Flip the preview's shown layer for this surface and re-render (no checkbox).
@@ -1899,10 +1921,10 @@ function bindShiftPreviewListeners() {
 // One-shot ⇧ pulse to invite the tap-to-flip gesture; the class self-removes on
 // animationend so it never loops.
 function armShiftPulse(host) {
-    const shiftKey = host.querySelector('.vk-preview-body .key[data-key="Shift"]');
+    const shiftKey = host.querySelector('.sk-preview-body .key[data-key="Shift"]');
     if (!shiftKey) return;
-    shiftKey.classList.add('vk-shift-pulse');
-    shiftKey.addEventListener('animationend', () => shiftKey.classList.remove('vk-shift-pulse'), { once: true });
+    shiftKey.classList.add('sk-shift-pulse');
+    shiftKey.addEventListener('animationend', () => shiftKey.classList.remove('sk-shift-pulse'), { once: true });
 }
 
 // ---------------------------------------------------------------------------
@@ -1915,11 +1937,11 @@ function armShiftPulse(host) {
 
 // Pick the editor entry point for a picker hosted in `containerElement`. The
 // editor always renders in the ONE library dialog; only the entry differs:
-// - inside #vk-settings-dialog: swap the open dialog's views in place.
+// - inside #sk-settings-dialog: swap the open dialog's views in place.
 // - embedded in a host container (game's Keyboard tab): open the dialog THEN
 //   switch to editor view (openLayoutEditor). Never a second editor.
 function editorEntryFor(containerElement) {
-    const inDialog = !!(containerElement && containerElement.closest('#vk-settings-dialog'));
+    const inDialog = !!(containerElement && containerElement.closest('#sk-settings-dialog'));
     return inDialog ? openEditorView : openLayoutEditor;
 }
 
@@ -1938,12 +1960,12 @@ function listAllLayouts() {
 // after any layout mutation (refreshMount / showPickerView). The geometry class is
 // applied by installPickerResponsiveness before this runs.
 function renderPickerList(containerElement) {
-    const list = containerElement.querySelector('#vk-layout-list');
-    if (!list) throw new Error('renderPickerList: #vk-layout-list not found');
-    const activeId = getVirtualKeyboardLayout();
+    const list = containerElement.querySelector('#sk-layout-list');
+    if (!list) throw new Error('renderPickerList: #sk-layout-list not found');
+    const activeId = getShawKeysLayout();
     clearInlineDetails(containerElement, false);   // deregister before the subtree wipe
     list.textContent = '';
-    if (pickerMount(containerElement).classList.contains('vk-geo-mobile')) {
+    if (pickerMount(containerElement).classList.contains('sk-geo-mobile')) {
         renderPickerDropdown(containerElement, list, activeId);
     } else {
         renderPickerRadios(containerElement, list, activeId);
@@ -1957,19 +1979,19 @@ function renderPickerRadios(containerElement, list, activeId) {
         list.appendChild(makePickerRow(containerElement, id, displayName, activeId, isCustom));
     }
     const active = list.querySelector(`input[value="${cssEscape(activeId)}"]`);
-    if (active) mountInlineDetail(containerElement, active.closest('.vk-layout-choice'), activeId, false);
+    if (active) mountInlineDetail(containerElement, active.closest('.sk-layout-choice'), activeId, false);
 }
 
 // Dropdown selector (MOBILE): a <select> of all layouts + a compact Edit button
 // (enabled only when a custom is selected), with the inline detail rendered below.
 function renderPickerDropdown(containerElement, list, activeId) {
     const bar = document.createElement('div');
-    bar.className = 'vk-dropdown-bar';
+    bar.className = 'sk-dropdown-bar';
 
     const select = document.createElement('select');
-    select.className = 'vk-dropdown';
+    select.className = 'sk-dropdown';
     select.name = layoutRadioGroupName(containerElement);   // preserve per-surface group name
-    const customTag = vkString('vkCustomChip', 'custom');
+    const customTag = skString('skCustomChip', 'custom');
     for (const { id, displayName, isCustom } of listAllLayouts()) {
         const opt = new Option(isCustom ? `${displayName} (${customTag})` : displayName, id);
         opt.selected = id === activeId;
@@ -1979,9 +2001,9 @@ function renderPickerDropdown(containerElement, list, activeId) {
 
     const edit = document.createElement('button');
     edit.type = 'button';
-    edit.className = 'vk-edit-btn vk-dropdown-edit';
-    edit.textContent = vkString('vkEditBtn', '✏️ Edit');
-    edit.title = vkString('vkEditSelectedTitle', 'Edit the selected custom layout');
+    edit.className = 'sk-edit-btn sk-dropdown-edit';
+    edit.textContent = skString('skEditBtn', '✏️ Edit');
+    edit.title = skString('skEditSelectedTitle', 'Edit the selected custom layout');
     const syncEdit = () => { edit.disabled = isBuiltInLayoutName(select.value); };
     syncEdit();
     edit.addEventListener('click', () => {
@@ -2001,7 +2023,7 @@ function renderPickerDropdown(containerElement, list, activeId) {
 // re-mounts the inline detail under this row with the ⇧-pulse armed.
 function makePickerRow(containerElement, id, displayName, activeId, isCustom) {
     const row = document.createElement('label');
-    row.className = 'vk-layout-choice';
+    row.className = 'sk-layout-choice';
 
     const radio = document.createElement('input');
     radio.type = 'radio';
@@ -2015,21 +2037,21 @@ function makePickerRow(containerElement, id, displayName, activeId, isCustom) {
     row.appendChild(radio);
 
     const name = document.createElement('span');
-    name.className = 'vk-choice-name';
+    name.className = 'sk-choice-name';
     name.textContent = displayName;
     row.appendChild(name);
 
     if (isCustom) {
         const chip = document.createElement('span');
-        chip.className = 'vk-custom-chip';
-        chip.textContent = vkString('vkCustomChip', 'custom');
+        chip.className = 'sk-custom-chip';
+        chip.textContent = skString('skCustomChip', 'custom');
         row.appendChild(chip);
 
         const edit = document.createElement('button');
         edit.type = 'button';
-        edit.className = 'vk-edit-btn';
-        edit.title = vkString('vkEditThisTitle', 'Edit this layout');
-        edit.textContent = vkString('vkEditIcon', '✏️');
+        edit.className = 'sk-edit-btn';
+        edit.title = skString('skEditThisTitle', 'Edit this layout');
+        edit.textContent = skString('skEditIcon', '✏️');
         // Stop the label from toggling the radio when the edit button is tapped.
         edit.addEventListener('click', (e) => { e.preventDefault(); editorEntryFor(containerElement)(id); });
         row.appendChild(edit);
@@ -2043,7 +2065,7 @@ function prefersReducedMotion() {
 }
 
 // Switch-animation duration; MUST match the CSS transitions in
-// keyboard-settings.html (.vk-detail-grid / .vk-inline-detail).
+// keyboard-settings.html (.sk-detail-grid / .sk-inline-detail).
 const DETAIL_ANIM_MS = 200;
 
 // Surfaces mid switch-animation. A user layout switch notifies the host, whose
@@ -2057,7 +2079,7 @@ const pickerSwitching = new WeakSet();
 // element still has to leave the DOM once it has finished collapsing.
 function collapseInlineDetail(detail) {
     if (prefersReducedMotion()) { detail.remove(); return; }
-    detail.classList.add('vk-detail-collapsed');
+    detail.classList.add('sk-detail-collapsed');
     setTimeout(() => detail.remove(), DETAIL_ANIM_MS);
 }
 
@@ -2067,7 +2089,7 @@ function collapseInlineDetail(detail) {
 // Deregistering here (not on the delayed removal) takes the outgoing detail out
 // of the physical-Shift driver immediately, so a collapsing detail can't re-render.
 function clearInlineDetails(containerElement, animate) {
-    containerElement.querySelectorAll('.vk-inline-detail').forEach(el => {
+    containerElement.querySelectorAll('.sk-inline-detail').forEach(el => {
         mountedPreviews.delete(el);
         if (animate) collapseInlineDetail(el); else el.remove();
     });
@@ -2078,8 +2100,8 @@ function clearInlineDetails(containerElement, animate) {
 // for a frame, or the browser sees no start value and jumps straight to expanded.
 function expandInlineDetail(detail) {
     if (prefersReducedMotion()) return;
-    detail.classList.add('vk-detail-collapsed');
-    requestAnimationFrame(() => detail.classList.remove('vk-detail-collapsed'));
+    detail.classList.add('sk-detail-collapsed');
+    requestAnimationFrame(() => detail.classList.remove('sk-detail-collapsed'));
 }
 
 // Clone the detail template, insert it after `row`, and render it for `layoutId`.
@@ -2089,8 +2111,8 @@ function expandInlineDetail(detail) {
 // from collapsed so a layout switch reads as continuous.
 function mountInlineDetail(containerElement, row, layoutId, pulseShift, animateIn) {
     if (!row) return;
-    const tpl = containerElement.querySelector('#vk-detail-template');
-    if (!tpl) throw new Error('mountInlineDetail: #vk-detail-template not found');
+    const tpl = containerElement.querySelector('#sk-detail-template');
+    if (!tpl) throw new Error('mountInlineDetail: #sk-detail-template not found');
     const detail = tpl.content.firstElementChild.cloneNode(true);
     applyUiStrings(detail);   // the cloned template carries data-i18n (Ligatures label)
     row.after(detail);
@@ -2152,7 +2174,7 @@ function cloneName(sourceName, suffix) {
 // Same set the old inline base <select> offered.
 function listCloneBases() {
     const bases = listBuiltInLayouts().map(l => ({ id: l.id, label: l.displayName }));
-    const customTag = vkString('vkCustomChip', 'custom');
+    const customTag = skString('skCustomChip', 'custom');
     for (const c of CustomLayouts.listCustomLayouts()) {
         bases.push({ id: c.id, label: `${customLayoutLabel(c.id)} (${customTag})` });
     }
@@ -2161,7 +2183,7 @@ function listCloneBases() {
 
 // A promoted base-picker overlay and where it came from, so closeBasePicker can
 // put it back. Keyed by the picker mount: each surface has its own overlay, and
-// two mounted surfaces both carry an element with id "vk-base-overlay" — hence
+// two mounted surfaces both carry an element with id "sk-base-overlay" — hence
 // the element is held here directly, never re-looked-up by id once promoted.
 const basePickerHome = new WeakMap();   // mount -> { overlay, parent, next }
 
@@ -2178,7 +2200,7 @@ const basePickerHome = new WeakMap();   // mount -> { overlay, parent, next }
 function promoteBasePicker(mount, overlay) {
     if (basePickerHome.has(mount)) return;   // already promoted
     basePickerHome.set(mount, { overlay, parent: overlay.parentNode, next: overlay.nextSibling });
-    const dialog = document.getElementById('vk-settings-dialog');
+    const dialog = document.getElementById('sk-settings-dialog');
     const host = (dialog && dialog.open && dialog.contains(overlay)) ? dialog : document.body;
     host.appendChild(overlay);
 }
@@ -2195,14 +2217,14 @@ function restoreBasePicker(mount, overlay) {
 // editor; backdrop / Cancel / Escape dismiss without creating anything.
 function openBasePicker(containerElement) {
     const overlay = basePickerOverlay(containerElement);
-    const list = overlay.querySelector('#vk-base-list');
+    const list = overlay.querySelector('#sk-base-list');
     if (!list) throw new Error('openBasePicker: base-picker list markup missing');
 
     list.textContent = '';
     for (const { id, label } of listCloneBases()) {
         const option = document.createElement('button');
         option.type = 'button';
-        option.className = 'vk-base-option';
+        option.className = 'sk-base-option';
         option.textContent = label;
         option.addEventListener('click', () => {
             closeBasePicker(containerElement);
@@ -2213,7 +2235,7 @@ function openBasePicker(containerElement) {
 
     promoteBasePicker(pickerMount(containerElement), overlay);
     overlay.hidden = false;
-    const first = list.querySelector('.vk-base-option');
+    const first = list.querySelector('.sk-base-option');
     if (first) first.focus();
 }
 
@@ -2229,7 +2251,7 @@ function closeBasePicker(containerElement) {
 function basePickerOverlay(containerElement) {
     const mount = pickerMount(containerElement);
     const home = basePickerHome.get(mount);
-    const overlay = home ? home.overlay : mount.querySelector('#vk-base-overlay');
+    const overlay = home ? home.overlay : mount.querySelector('#sk-base-overlay');
     if (!overlay) throw new Error('basePickerOverlay: base-picker overlay markup missing');
     return overlay;
 }
@@ -2238,19 +2260,19 @@ function basePickerOverlay(containerElement) {
 // input, and the overlay's own dismiss wiring. Wired once per HTML load. The other
 // manage verbs (download/delete) live in the editor (reached via ✏️).
 function wireCreateControls(containerElement) {
-    const newBtn = containerElement.querySelector('#vk-create-new');
+    const newBtn = containerElement.querySelector('#sk-create-new');
     if (newBtn) {
         newBtn.addEventListener('click', () => openBasePicker(containerElement));
     }
-    const importBtn = containerElement.querySelector('#vk-create-import');
-    const fileInput = containerElement.querySelector('#vk-create-file');
+    const importBtn = containerElement.querySelector('#sk-create-import');
+    const fileInput = containerElement.querySelector('#sk-create-file');
     if (importBtn && fileInput) {
         importBtn.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', () => rosterImport(fileInput));
     }
 
-    const overlay = containerElement.querySelector('#vk-base-overlay');
-    const cancel = containerElement.querySelector('#vk-base-cancel');
+    const overlay = containerElement.querySelector('#sk-base-overlay');
+    const cancel = containerElement.querySelector('#sk-base-cancel');
     if (cancel) cancel.addEventListener('click', () => closeBasePicker(containerElement));
     if (overlay) {
         // Backdrop click (the overlay itself, not the panel) dismisses.
@@ -2338,10 +2360,10 @@ async function rosterDelete(id) {
     const CL = CustomLayouts;
     const record = CL.getCustomLayout(id);
     if (!record) return;
-    if (!window.confirm(vkString('vkConfirmDelete', 'Delete custom keyboard "{{name}}"? This cannot be undone.', { name: record.displayName }))) {
+    if (!window.confirm(skString('skConfirmDelete', 'Delete custom keyboard "{{name}}"? This cannot be undone.', { name: record.displayName }))) {
         return;
     }
-    const wasActive = getVirtualKeyboardLayout() === id;
+    const wasActive = getShawKeysLayout() === id;
     CL.deleteCustomLayout(id);
     invalidateLayoutCache(id);
     // Deleting the ACTIVE custom: fall back to the host default and persist it HERE,
@@ -2415,23 +2437,23 @@ function rosterImport(fileInput) {
 }
 
 // ---------------------------------------------------------------------------
-// Two-view dialog controller. #vk-settings-dialog holds view 1 (picker+roster)
+// Two-view dialog controller. #sk-settings-dialog holds view 1 (picker+roster)
 // and view 2 (editor); this swaps which shows, without a second showModal. The
 // header's Back button + title reflect the current view. openEditorView loads
-// the editor into #vk-view-editor; showPickerView returns to view 1 and refreshes
+// the editor into #sk-view-editor; showPickerView returns to view 1 and refreshes
 // the roster.
 // ---------------------------------------------------------------------------
 
 // Swap to the editor view, opening the editor locked to `id`. The editor renders
-// into #vk-view-editor and calls `onExit` on Back/Done. The ENTRY POINT owns the
+// into #sk-view-editor and calls `onExit` on Back/Done. The ENTRY POINT owns the
 // Back target: a dialog-entry (default) returns to the dialog picker view; a
 // mount-entry (openLayoutEditor) passes an onExit that closes the dialog so the
 // user lands back on the game's own Keyboard tab, not the dialog's picker.
 function openEditorView(id, onExit) {
-    const dialog = document.getElementById('vk-settings-dialog');
+    const dialog = document.getElementById('sk-settings-dialog');
     if (!dialog) return;
-    const picker = dialog.querySelector('#vk-view-picker');
-    const editorHost = dialog.querySelector('#vk-view-editor');
+    const picker = dialog.querySelector('#sk-view-picker');
+    const editorHost = dialog.querySelector('#sk-view-editor');
     if (!picker || !editorHost) return;
     LayoutEditor.open(id, {
         host: editorHost,
@@ -2446,10 +2468,10 @@ function openEditorView(id, onExit) {
 // Return to view 1 (picker + roster). Refreshes the roster (a save/delete may have
 // changed it) and restores the picker chrome.
 function showPickerView() {
-    const dialog = document.getElementById('vk-settings-dialog');
+    const dialog = document.getElementById('sk-settings-dialog');
     if (!dialog) return;
-    const picker = dialog.querySelector('#vk-view-picker');
-    const editorHost = dialog.querySelector('#vk-view-editor');
+    const picker = dialog.querySelector('#sk-view-picker');
+    const editorHost = dialog.querySelector('#sk-view-editor');
     if (editorHost) editorHost.style.display = 'none';
     if (picker) {
         picker.style.display = '';
@@ -2462,34 +2484,34 @@ function showPickerView() {
 // the dismissal handlers (cancel/✕) route through the dirty check only in editor
 // view. The editor host is display:'' when active, 'none' otherwise.
 function isEditorViewActive() {
-    const editorHost = document.querySelector('#vk-settings-dialog #vk-view-editor');
+    const editorHost = document.querySelector('#sk-settings-dialog #sk-view-editor');
     return !!editorHost && editorHost.style.display !== 'none';
 }
 
 // Toggle the dialog header between the two views: the editor view shows a Back
 // affordance (dirty-checked, delegated to the editor) and an editor title.
 function setDialogViewChrome(view) {
-    const dialog = document.getElementById('vk-settings-dialog');
+    const dialog = document.getElementById('sk-settings-dialog');
     if (!dialog) return;
-    const back = dialog.querySelector('#vk-dialog-back');
-    const title = dialog.querySelector('#vk-dialog-title');
+    const back = dialog.querySelector('#sk-dialog-back');
+    const title = dialog.querySelector('#sk-dialog-title');
     if (back) {
         back.style.display = view === 'editor' ? '' : 'none';
-        back.textContent = vkString('vkDialogBack', '← Back');
+        back.textContent = skString('skDialogBack', '← Back');
     }
     if (title) title.textContent = view === 'editor'
-        ? vkString('vkEditorTitle', 'Edit keyboard')
-        : vkString('vkDialogTitle', 'Virtual Keyboard Settings');
+        ? skString('skEditorTitle', 'Edit keyboard')
+        : skString('skDialogTitle', 'Shaw Keys Settings');
 }
 
 // Show settings in a modal/dialog (example implementation)
-function showVirtualKeyboardSettings(dialogElement) {
+function showShawKeysSettings(dialogElement) {
     if (!dialogElement) {
-        console.error('No dialog element provided to showVirtualKeyboardSettings');
+        console.error('No dialog element provided to showShawKeysSettings');
         return;
     }
 
-    loadVirtualKeyboardSettingsHTML(dialogElement).then(success => {
+    loadShawKeysSettingsHTML(dialogElement).then(success => {
         if (success && dialogElement.showModal) {
             dialogElement.showModal();
         } else if (success) {
@@ -2499,25 +2521,25 @@ function showVirtualKeyboardSettings(dialogElement) {
 }
 
 // Open keyboard settings dialog (creates dialog if needed)
-async function openVirtualKeyboardSettings() {
+async function openShawKeysSettings() {
     // Check if dialog already exists
-    let dialog = document.getElementById('vk-settings-dialog');
+    let dialog = document.getElementById('sk-settings-dialog');
 
     if (!dialog) {
         // Create dialog
         dialog = document.createElement('dialog');
-        dialog.id = 'vk-settings-dialog';
+        dialog.id = 'sk-settings-dialog';
         // Centre via inset+margin:auto, NOT transform: a transformed dialog becomes
         // the containing block for its position:fixed descendants, which would trap
-        // the promoted glyph-picker vk inside the dialog box (clipping it). Native
-        // <dialog> centering (inset 0 + margin auto) leaves the vk's fixed position
+        // the promoted glyph-picker keyboard inside the dialog box (clipping it). Native
+        // <dialog> centering (inset 0 + margin auto) leaves the keyboard's fixed position
         // resolving against the viewport, so it floats free above the backdrop.
         dialog.style.cssText = 'width: 800px; max-width: 95%; border: none; border-radius: 12px; padding: 0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); z-index: 999999; position: fixed; inset: 0; margin: auto;';
 
         // Add backdrop blur styles
         const style = document.createElement('style');
         style.textContent = `
-            #vk-settings-dialog::backdrop {
+            #sk-settings-dialog::backdrop {
                 background-color: rgba(0, 0, 0, 0.5);
                 backdrop-filter: blur(4px);
                 -webkit-backdrop-filter: blur(4px);
@@ -2531,14 +2553,14 @@ async function openVirtualKeyboardSettings() {
         // Back affordance (editor view only). Delegates to the editor so the
         // dirty check happens there; the editor's onExit returns to view 1.
         const backBtn = document.createElement('button');
-        backBtn.id = 'vk-dialog-back';
-        backBtn.textContent = vkString('vkDialogBack', '← Back');
+        backBtn.id = 'sk-dialog-back';
+        backBtn.textContent = skString('skDialogBack', '← Back');
         backBtn.style.cssText = 'border: none; background: none; font-size: 15px; cursor: pointer; color: #007bff; display: none;';
         backBtn.addEventListener('click', () => LayoutEditor.back());
 
         const title = document.createElement('h2');
-        title.id = 'vk-dialog-title';
-        title.textContent = vkString('vkDialogTitle', 'Virtual Keyboard Settings');
+        title.id = 'sk-dialog-title';
+        title.textContent = skString('skDialogTitle', 'Shaw Keys Settings');
         title.style.cssText = 'margin: 0; font-size: 18px; flex: 1; text-align: center;';
 
         const closeBtn = document.createElement('button');
@@ -2561,7 +2583,7 @@ async function openVirtualKeyboardSettings() {
         header.appendChild(closeBtn);
 
         const container = document.createElement('div');
-        container.id = 'vk-settings-container';
+        container.id = 'sk-settings-container';
         container.style.cssText = 'padding: 16px;';
 
         dialog.appendChild(header);
@@ -2599,22 +2621,22 @@ async function openVirtualKeyboardSettings() {
 
         // GAME SAFETY: one dialog = one close path. On close (✕ in picker view, or
         // Escape when not blocked above), tear the editor down — its close()
-        // releases the vk destination back to the game input unconditionally — and
+        // releases the keyboard destination back to the game input unconditionally — and
         // reset to the picker view so the next open starts clean.
         // LayoutEditor.close() is a no-op-safe teardown when never opened.
         dialog.addEventListener('close', () => {
             LayoutEditor.close();
-            const picker = dialog.querySelector('#vk-view-picker');
-            const editorHost = dialog.querySelector('#vk-view-editor');
+            const picker = dialog.querySelector('#sk-view-picker');
+            const editorHost = dialog.querySelector('#sk-view-editor');
             if (editorHost) editorHost.style.display = 'none';
             if (picker) picker.style.display = '';
             setDialogViewChrome('picker');
         });
 
         // Load settings HTML
-        const success = await loadVirtualKeyboardSettingsHTML(container);
+        const success = await loadShawKeysSettingsHTML(container);
         if (!success) {
-            console.error('[Virtual Keyboard] Failed to load settings HTML');
+            console.error('[Shaw Keys] Failed to load settings HTML');
             return;
         }
     } else {
@@ -2636,14 +2658,14 @@ async function openVirtualKeyboardSettings() {
 // this opens the dialog then swaps views. Public entry for a host that wants to
 // jump directly to editing a specific custom.
 async function openLayoutEditor(startId) {
-    await openVirtualKeyboardSettings();
+    await openShawKeysSettings();
     // Mount-entry Back target: close the dialog so the user returns to the game's
     // own Keyboard tab they came from, NOT the dialog's picker view (that picker
     // is a different surface than where they started). The dialog's `close`
     // handler runs the editor's game-safe teardown + resets to picker view for the
     // next open. See editorEntryFor / openEditorView.
     openEditorView(startId, () => {
-        const dialog = document.getElementById('vk-settings-dialog');
+        const dialog = document.getElementById('sk-settings-dialog');
         if (dialog) dialog.close();
     });
 }
@@ -2794,7 +2816,7 @@ function clearLigaturePreview() {
 
 /**
  * Enable keystroke interception for an input element
- * Only translates when virtual keyboard is visible
+ * Only translates when Shaw Keys is visible
  *
  * @param {HTMLInputElement} inputElement - The input element to intercept
  * @param {Object} options - Configuration options
@@ -2969,12 +2991,12 @@ function enableKeystrokeInterception(inputElement, options = {}) {
         throw new Error('Input element is required');
     }
 
-    let currentLayout = options.layout || getVirtualKeyboardLayout();
+    let currentLayout = options.layout || getShawKeysLayout();
 
     const beforeInputHandler = (e) => {
         // The visible keyboard IS the latin->glyph map the user reads off, so
         // hidden it translates nothing and typed latin binds as itself.
-        if (!isVirtualKeyboardVisible()) {
+        if (!isShawKeysVisible()) {
             return;
         }
 
@@ -3021,13 +3043,13 @@ function enableKeystrokeInterception(inputElement, options = {}) {
         }
     };
 
-    inputElement._vkLayoutChangeHandler = layoutChangeHandler;
+    inputElement._skLayoutChangeHandler = layoutChangeHandler;
 
     registerKeyboardEnabled(inputElement);
 
     return () => {
         inputElement.removeEventListener('beforeinput', beforeInputHandler);
-        delete inputElement._vkLayoutChangeHandler;
+        delete inputElement._skLayoutChangeHandler;
         unregisterKeyboardEnabled(inputElement);
     };
 }
@@ -3037,16 +3059,16 @@ function enableKeystrokeInterception(inputElement, options = {}) {
  * @param {string} layoutName - The new layout name
  */
 function setInterceptionLayout(layoutName) {
-    saveVirtualKeyboardLayout(layoutName);
+    saveShawKeysLayout(layoutName);
     // Notify all inputs that might be listening
     document.querySelectorAll('input, textarea, [contenteditable]').forEach(el => {
-        if (el._vkLayoutChangeHandler) {
-            el._vkLayoutChangeHandler(layoutName);
+        if (el._skLayoutChangeHandler) {
+            el._skLayoutChangeHandler(layoutName);
         }
     });
 }
 
-// Set URL resolver (can be called separately from initVirtualKeyboard)
+// Set URL resolver (can be called separately from initShawKeys)
 function setResourceUrlResolver(resolver) {
     resourceUrlResolver = resolver;
 }
@@ -3080,15 +3102,15 @@ function invalidateLayoutCache(layoutName) {
 }
 
 // Helper to check if keyboard is visible
-function isVirtualKeyboardVisible() {
-    const keyboard = document.getElementById('virtualKeyboard');
+function isShawKeysVisible() {
+    const keyboard = document.getElementById('shawKeys');
     return keyboard && keyboard.style.display !== 'none';
 }
 
 // Destroy/cleanup function
-function destroyVirtualKeyboard() {
+function destroyShawKeys() {
     // Remove keyboard from DOM
-    const container = document.getElementById('virtualKeyboard');
+    const container = document.getElementById('shawKeys');
     if (container) {
         container.remove();
     }
@@ -3098,31 +3120,31 @@ function destroyVirtualKeyboard() {
     isShiftActive = false;
     onStateChange = null;
 
-    console.log('[Virtual Keyboard] Destroyed');
+    console.log('[Shaw Keys] Destroyed');
 }
 
 // Named exports for the sibling modules. The supported host surface is the
-// VirtualKeyboard object below.
+// ShawKeys object below.
 export { getComponentToLigature, formLigatures, isBuiltInLayoutName };
 
 // New namespaced API - cleaner and more organized
-export const VirtualKeyboard = {
+export const ShawKeys = {
     // Lifecycle
-    init: initVirtualKeyboard,
-    destroy: destroyVirtualKeyboard,
+    init: initShawKeys,
+    destroy: destroyShawKeys,
 
     // Visibility
-    show: showVirtualKeyboard,
-    hide: hideVirtualKeyboard,
-    toggle: toggleVirtualKeyboard,
-    isVisible: isVirtualKeyboardVisible,
+    show: showShawKeys,
+    hide: hideShawKeys,
+    toggle: toggleShawKeys,
+    isVisible: isShawKeysVisible,
 
     // The platform's show/hide shortcut ("⌘K" / "Ctrl+K"), for a host to append
     // to its own toggle label. See toggleShortcutLabel.
     toggleShortcutLabel: toggleShortcutLabel,
 
     // Layout management
-    getLayout: getVirtualKeyboardLayout,
+    getLayout: getShawKeysLayout,
     setLayout: setKeyboardLayout,
 
     // The built-in layout the library falls back to when the ACTIVE custom is
@@ -3155,7 +3177,7 @@ export const VirtualKeyboard = {
     setUiStrings: setUiStrings,
 
     // State management
-    onStateChange: setVirtualKeyboardStateCallback,
+    onStateChange: setShawKeysStateCallback,
     getState: getKeyboardState,
 
     // Suppress global keydown handling while the host shows a modal
@@ -3193,8 +3215,8 @@ export const VirtualKeyboard = {
         getKeyboardLayoutData: getKeyboardLayout,
         updateKeyboardLabels: updateKeyboardLabels,
         makeKeysClickable: makeKeysClickable,
-        loadSettingsHTML: loadVirtualKeyboardSettingsHTML,
-        showSettings: showVirtualKeyboardSettings,
+        loadSettingsHTML: loadShawKeysSettingsHTML,
+        showSettings: showShawKeysSettings,
         getResourceUrl: getResourceUrl,
         setResourceUrlResolver: setResourceUrlResolver,
         setCustomLayoutResolver: setCustomLayoutResolver,
@@ -3207,9 +3229,9 @@ export const VirtualKeyboard = {
         builtInLatinName: builtInLatinName,
         layoutDisplayName: layoutDisplayName,
         preloadBuiltInLayouts: preloadBuiltInLayouts,
-        // UI-string helpers for the sibling editor: vkString resolves a key in the
+        // UI-string helpers for the sibling editor: skString resolves a key in the
         // active script (Latin fallback); applyUiStrings stamps [data-i18n] etc.
-        vkString: vkString,
+        skString: skString,
         applyUiStrings: applyUiStrings,
         // Active-script label resolution for the user-AUTHORED labels no string
         // table can carry (a custom layout's Shavian name/description), Latin
@@ -3219,7 +3241,7 @@ export const VirtualKeyboard = {
         // Editor/roster entry points and the built-in layout registry — opened
         // by editorEntryFor/roster internally, not part of the host contract.
         openLayoutEditor: openLayoutEditor,
-        openSettings: openVirtualKeyboardSettings,
+        openSettings: openShawKeysSettings,
         listBuiltInLayouts: listBuiltInLayouts,
         // Structural-family split + built-in-name check; validateLayout uses
         // isBuiltInLayoutName to reject an unknown custom-layout `base`.
@@ -3239,5 +3261,5 @@ export const VirtualKeyboard = {
 // Transition surface: the consumers still reach the library through globals.
 // Delete these three assignments (here, custom-layouts.js and layout-editor.js)
 // once every consumer imports instead.
-window.VirtualKeyboard = VirtualKeyboard;
+window.ShawKeys = ShawKeys;
 
