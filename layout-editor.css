@@ -18,6 +18,11 @@ body.le-picker-open #shawKeys {
    the footer stays reachable while the body scrolls. The dialog gives the shell
    its width and backdrop. */
 #layoutEditorModal {
+    /* The keyboard panel's corner radius, named because the layer bar insets by
+       it to clear the curve (see .le-layer-bar). Local rather than a --sk-*
+       token: those are the host's override surface, and this binds two rules in
+       this file, which is no host's business. */
+    --le-keyboard-radius: 8px;
     display: flex;
     flex-direction: column;
     max-height: 80vh;
@@ -169,8 +174,15 @@ body.le-picker-open #shawKeys {
 }
 
 /* Tabs sit left, coverage trails right. Wraps when the long missing-glyph form
-   won't fit, so the coverage text is never truncated; row-gap 0 keeps the tabs
-   flush against the panel when it does wrap. */
+   won't fit, so the coverage text is never truncated; row-gap 0 keeps the
+   wrapped coverage line tight under the tabs rather than adrift between them
+   and the keyboard.
+
+   Both ends clear the panel's corners so the row sits over its FLAT top edge: a
+   tab flush with the panel's edge overhangs the curve, and the daylight through
+   that curve reads as a chink between two objects rather than a tab on a panel.
+   Clearing it by more than the radius leaves a run of flat edge visible, which
+   at exactly the radius it does not. */
 .le-layer-bar {
     display: flex;
     flex-wrap: wrap;
@@ -179,6 +191,7 @@ body.le-picker-open #shawKeys {
     column-gap: 12px;
     row-gap: 0;
     margin-top: 4px;
+    padding: 0 calc(var(--le-keyboard-radius) + 4px);
 }
 
 .le-layer-tabs {
@@ -213,17 +226,28 @@ body.le-picker-open #shawKeys {
    It is joined to the KEYBOARD PANEL, which is --sk-keyboard-fill in BOTH
    themes — not to the dialog surface. That is why it stays dark in light mode
    rather than following the theme: a themed tab would sever the join to a
-   permanently-dark panel. */
+   permanently-dark panel.
+
+   Dropping its own bottom border is not enough to open the join: the PANEL's
+   top border runs on under the tab and severs the two shapes. A box cannot
+   suppress one edge of another, so the tab covers it with a 1px skirt of the
+   shared fill. */
 .le-layer-tab.le-layer-active {
+    position: relative;
     background: var(--sk-keyboard-fill);
     color: var(--sk-keyboard-text);
     border: 1px solid var(--sk-border);
     border-bottom: none;
 }
 
-/* Square off the panel's top-left corner so the joined tab meets a flat edge. */
-.le-keyboard-tabbed {
-    border-top-left-radius: 0;
+.le-layer-tab.le-layer-active::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 1px;
+    background: var(--sk-keyboard-fill);
 }
 
 /* The editor keyboard sits in a dark panel, matching the on-screen keyboard.
@@ -238,7 +262,7 @@ body.le-picker-open #shawKeys {
        outline on any surface; against the dark fill on light it renders but
        makes no visible change. */
     border: 1px solid var(--sk-border);
-    border-radius: 8px;
+    border-radius: var(--le-keyboard-radius);
     padding: 12px 8px;
     user-select: none;
     /* The body now holds fixed (correctly-proportioned) key sizing, so a wide
