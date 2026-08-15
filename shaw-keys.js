@@ -2537,7 +2537,11 @@ async function openShawKeysSettings() {
         // Colours are NOT set here — see #sk-settings-dialog in shaw-keys.css.
         // showModal puts this in the top layer, which no z-index can raise or
         // lower, so it carries none.
-        dialog.style.cssText = 'width: 800px; max-width: 95%; border: none; border-radius: 12px; padding: 0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); position: fixed; inset: 0; margin: auto;';
+        // 640px is set by the widest thing either view holds: the editor's
+        // keyboard panel (~584px) plus the container's padding. The picker's
+        // preview scales to any width, so it sets no floor. Going narrower puts
+        // the editor keyboard into horizontal scroll.
+        dialog.style.cssText = 'width: 640px; max-width: 95%; border: none; border-radius: 12px; padding: 0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); position: fixed; inset: 0; margin: auto;';
 
         // Add backdrop blur styles
         const style = document.createElement('style');

@@ -33,16 +33,22 @@
         <input type="text" id="leGlyphInput" class="le-glyph-input le-glyph-input-parked"
                aria-label="Type a glyph for the selected key"
                autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-        <!-- Layer tabs + coverage readout share a row above the keyboard. Both sit
-             outside .le-keyboard so they can't scroll away with it. -->
-        <div class="le-layer-bar">
-            <div class="le-layer-tabs" role="tablist">
-                <button id="leLayerMain" class="le-layer-tab le-layer-active" role="tab" data-i18n="skEditorLayerMain" onclick="LayoutEditor.setLayer('main')">Main</button>
-                <button id="leLayerShift" class="le-layer-tab" role="tab" data-i18n="skEditorLayerShift" onclick="LayoutEditor.setLayer('shift')">Shift</button>
+        <!-- Tab bar + panel are one object (the tabs are drawn joined to the
+             panel's top edge), so they are wrapped to share one width: the
+             group shrink-wraps the keyboard and centres, rather than each
+             stretching to the dialog. -->
+        <div class="le-keyboard-group">
+            <!-- Layer tabs + coverage readout share a row above the keyboard. Both sit
+                 outside .le-keyboard so they can't scroll away with it. -->
+            <div class="le-layer-bar">
+                <div class="le-layer-tabs" role="tablist">
+                    <button id="leLayerMain" class="le-layer-tab le-layer-active" role="tab" data-i18n="skEditorLayerMain" onclick="LayoutEditor.setLayer('main')">Main</button>
+                    <button id="leLayerShift" class="le-layer-tab" role="tab" data-i18n="skEditorLayerShift" onclick="LayoutEditor.setLayer('shift')">Shift</button>
+                </div>
+                <div id="leCoverage" class="le-coverage"></div>
             </div>
-            <div id="leCoverage" class="le-coverage"></div>
+            <div id="layoutEditorKeyboard" class="le-keyboard"></div>
         </div>
-        <div id="layoutEditorKeyboard" class="le-keyboard"></div>
         <div class="le-hint" data-i18n="skEditorHint">Tap a key, then type its letter. Arrow/Tab move between keys.</div>
 
         <label class="le-section" data-i18n="skLigatures">Ligatures</label>

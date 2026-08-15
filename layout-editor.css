@@ -182,7 +182,11 @@ body.le-picker-open #shawKeys {
    tab flush with the panel's edge overhangs the curve, and the daylight through
    that curve reads as a chink between two objects rather than a tab on a panel.
    Clearing it by more than the radius leaves a run of flat edge visible, which
-   at exactly the radius it does not. */
+   at exactly the radius it does not.
+
+   Matched to the panel's width by .le-keyboard-group, which wraps the two: the
+   bar's ends are only over the panel's corners while the two boxes share edges,
+   and the panel no longer spans the row. */
 .le-layer-bar {
     display: flex;
     flex-wrap: wrap;
@@ -248,6 +252,18 @@ body.le-picker-open #shawKeys {
     bottom: -1px;
     height: 1px;
     background: var(--sk-keyboard-fill);
+}
+
+/* Tab bar + keyboard panel, sized as one object so the tabs stay joined to the
+   panel's edges. Shrink-wrapped to the keys because the panel's fill is
+   --sk-keyboard-fill — dark in BOTH themes — so on a light dialog any surplus
+   width reads as part of the instrument rather than as the dialog behind it.
+   fit-content, not max-content: it still caps at the available width, leaving
+   .le-keyboard's overflow-x a scroll to do on a narrow viewport. */
+.le-keyboard-group {
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
 }
 
 /* The editor keyboard sits in a dark panel, matching the on-screen keyboard.
@@ -432,16 +448,22 @@ body.le-picker-open #shawKeys {
 
 /* Ligature pairs laid out in as many columns as fit, to cut the vertical height
    of the list (it can grow long, and vertical space is scarce beside the
-   keyboard). auto-fill + minmax lets the browser do the counting: a phone gets
-   one column, an iPad or desktop three or more, with no breakpoint ladder and no
-   JS measuring. Rows flow row-major, so Tab navigation (which walks ligRows by
+   keyboard). auto-fill lets the browser do the counting — a phone gets one
+   column, a wider dialog two or more — with no breakpoint ladder and no JS
+   measuring. Rows flow row-major, so Tab navigation (which walks ligRows by
    array index) reads left-to-right then down — natural reading order.
    --le-lig-row-width is one row's intrinsic width: 3 slots (34px) + 2 ops
-   (~15px) + a delete button (~15px) + the flex gaps. */
+   (~15px) + a delete button (~15px) + the flex gaps.
+
+   Columns are held AT that width rather than stretched to fill it (the `1fr`
+   this once had): a stretched column pulls the glyph triplet away from its own
+   delete button, so the cell stops reading as one pair. The surplus goes to
+   justify-content instead, which is why holding the width leaves no ragged
+   right edge. */
 #layoutEditorLigatures {
     --le-lig-row-width: 190px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(var(--le-lig-row-width), 1fr));
+    grid-template-columns: repeat(auto-fill, var(--le-lig-row-width));
     justify-content: center;
     gap: 4px 24px;
 }
