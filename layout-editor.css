@@ -10,7 +10,7 @@
    ::backdrop (see promoteVkAboveBackdrop); this z-index keeps it above the
    dialog's in-flow content too. Class added/removed by picker open/teardown. */
 body.le-picker-open #shawKeys {
-    z-index: 2100;
+    z-index: calc(var(--sk-overlay-z, 2000) + 100);
 }
 
 /* The editor is VIEW 2 of the Shaw Keys settings dialog (#sk-view-editor), not its own
@@ -76,10 +76,10 @@ body.le-picker-open #shawKeys {
    FIXED to the viewport and appended to the dialog (not the scrolling .le-body),
    so the dialog's scroll box can never clip it — layout-editor.js measures the
    room above vs below and positions it on the roomier side. The z-index clears
-   the promoted #shawKeys (2100) so the palette wins when both are up. */
+   the promoted #shawKeys so the palette wins when both are up. */
 .le-palette {
     position: fixed;
-    z-index: 2200;
+    z-index: calc(var(--sk-overlay-z, 2000) + 200);
     display: grid;
     grid-template-columns: repeat(var(--le-palette-columns), max-content);
     justify-content: start;
@@ -193,10 +193,11 @@ body.le-picker-open #shawKeys {
     padding-bottom: 5px;
 }
 
-/* The active tab takes the keyboard panel's dark fill and keeps square bottom
-   corners, so it reads as joined to the panel it labels. */
 .le-layer-tab {
-    border: none;
+    /* Transparent, not none: the active tab draws a real border and the row
+       must not shift by a pixel when the selection moves. */
+    border: 1px solid transparent;
+    border-bottom: none;
     background: var(--sk-surface-sunken);
     padding: 6px 16px;
     font-size: 13px;
@@ -205,9 +206,19 @@ body.le-picker-open #shawKeys {
     border-radius: 8px 8px 0 0;
 }
 
+/* The active tab takes the keyboard panel's fill and the same outline (see
+   .le-keyboard), minus the bottom edge and with square bottom corners, so tab
+   and panel read as one continuous shape.
+
+   It is joined to the KEYBOARD PANEL, which is --sk-keyboard-fill in BOTH
+   themes — not to the dialog surface. That is why it stays dark in light mode
+   rather than following the theme: a themed tab would sever the join to a
+   permanently-dark panel. */
 .le-layer-tab.le-layer-active {
-    background: #2a2a2a;
-    color: #fff;
+    background: var(--sk-keyboard-fill);
+    color: var(--sk-keyboard-text);
+    border: 1px solid var(--sk-border);
+    border-bottom: none;
 }
 
 /* Square off the panel's top-left corner so the joined tab meets a flat edge. */
@@ -220,7 +231,13 @@ body.le-picker-open #shawKeys {
    comfortable top/bottom breathing room even when the cloned body's own padding
    drops to 3px under the real keyboard's mobile @media. Horizontal stays 8px. */
 .le-keyboard {
-    background: #2a2a2a;
+    background: var(--sk-keyboard-fill);
+    /* In dark mode the dialog surface IS the keyboard fill, so without an edge
+       the panel — and the active tab joined to it — dissolve into the page and
+       the idle tab reads as the selected one. The border draws the instrument's
+       outline on any surface; against the dark fill on light it renders but
+       makes no visible change. */
+    border: 1px solid var(--sk-border);
     border-radius: 8px;
     padding: 12px 8px;
     user-select: none;

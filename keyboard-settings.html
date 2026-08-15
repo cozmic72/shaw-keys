@@ -398,10 +398,10 @@
 
 /* Base-picker overlay. openBasePicker reparents it out of the picker (into the
    settings <dialog> when open, else <body>) so no scroll box can clip it, and
-   position:fixed then resolves its box against the VIEWPORT. z-index clears the
-   game's own settings modal (z-index 2000); inside the top-layer <dialog> the
-   stacking is already above ::backdrop. Not a nested <dialog>.showModal — see
-   promoteBasePicker. */
+   position:fixed then resolves its box against the VIEWPORT. z-index rides the
+   --sk-overlay-z floor (see shaw-keys.css) so it clears whatever the host
+   stacks below it; inside the top-layer <dialog> the stacking is already above
+   ::backdrop. Not a nested <dialog>.showModal — see promoteBasePicker. */
 .sk-base-overlay[hidden] {
     display: none;   /* [hidden] must beat the display:flex below */
 }
@@ -409,7 +409,7 @@
 .sk-base-overlay {
     position: fixed;
     inset: 0;
-    z-index: 2500;
+    z-index: calc(var(--sk-overlay-z, 2000) + 500);
     display: flex;
     align-items: center;
     justify-content: center;

@@ -71,6 +71,28 @@ preference. The `--sk-*` custom properties in `shaw-keys.css` hold both
 palettes, so a host supplies nothing — but one overriding them re-themes both
 surfaces without touching a rule.
 
+### Stacking against a host's own modals
+
+The library's overlays — the base picker, the editor's glyph palette, and the
+keyboard while the palette is open — stack from a floor named
+`--sk-overlay-z`, each adding a fixed offset so their order among themselves is
+the library's business and cannot be got wrong. The floor defaults to `2000`,
+which clears an unstyled page.
+
+A host whose own modals sit above that must raise the floor, because the
+keyboard's settings are reached *from* a host's settings UI and would otherwise
+open behind it:
+
+```css
+:root { --sk-overlay-z: 12500; }   /* above your own modals — shave's sit at 11000-12000 */
+```
+
+The default is written as a `var()` fallback at each point of use rather than
+declared on `:root`, so a host's value wins whichever order the stylesheets
+load in. Do not add a `:root` declaration for it here: this stylesheet loads
+after the host's in the `<link>` order above, so one would silently beat the
+host's override.
+
 ### Cache busting, and why there is no version
 
 `shaw-keys.js` reads a `?v=` parameter off its own `import.meta.url` and

@@ -2534,7 +2534,10 @@ async function openShawKeysSettings() {
         // the promoted glyph-picker keyboard inside the dialog box (clipping it). Native
         // <dialog> centering (inset 0 + margin auto) leaves the keyboard's fixed position
         // resolving against the viewport, so it floats free above the backdrop.
-        dialog.style.cssText = 'width: 800px; max-width: 95%; border: none; border-radius: 12px; padding: 0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); z-index: 999999; position: fixed; inset: 0; margin: auto;';
+        // Colours are NOT set here — see #sk-settings-dialog in shaw-keys.css.
+        // showModal puts this in the top layer, which no z-index can raise or
+        // lower, so it carries none.
+        dialog.style.cssText = 'width: 800px; max-width: 95%; border: none; border-radius: 12px; padding: 0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); position: fixed; inset: 0; margin: auto;';
 
         // Add backdrop blur styles
         const style = document.createElement('style');
@@ -2548,24 +2551,23 @@ async function openShawKeysSettings() {
         document.head.appendChild(style);
 
         const header = document.createElement('div');
-        header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #ddd;';
+        header.className = 'sk-dialog-header';
 
         // Back affordance (editor view only). Delegates to the editor so the
         // dirty check happens there; the editor's onExit returns to view 1.
         const backBtn = document.createElement('button');
         backBtn.id = 'sk-dialog-back';
         backBtn.textContent = skString('skDialogBack', '← Back');
-        backBtn.style.cssText = 'border: none; background: none; font-size: 15px; cursor: pointer; color: #007bff; display: none;';
+        backBtn.style.display = 'none';
         backBtn.addEventListener('click', () => LayoutEditor.back());
 
         const title = document.createElement('h2');
         title.id = 'sk-dialog-title';
         title.textContent = skString('skDialogTitle', 'Shaw Keys Settings');
-        title.style.cssText = 'margin: 0; font-size: 18px; flex: 1; text-align: center;';
 
         const closeBtn = document.createElement('button');
         closeBtn.textContent = '✕';
-        closeBtn.style.cssText = 'width: 28px; height: 28px; border: none; border-radius: 14px; background-color: #eee; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;';
+        closeBtn.className = 'sk-dialog-close';
         // In editor view, ✕ must run the editor's dirty check (it routes through
         // back() → confirm → onExit to picker), NOT close outright — otherwise
         // unsaved edits vanish. .close() does not fire the `cancel` event, so this
@@ -2584,7 +2586,6 @@ async function openShawKeysSettings() {
 
         const container = document.createElement('div');
         container.id = 'sk-settings-container';
-        container.style.cssText = 'padding: 16px;';
 
         dialog.appendChild(header);
         dialog.appendChild(container);
