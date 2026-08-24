@@ -692,6 +692,20 @@ async function getKeyboardLayout(layoutName) {
     return await loadKeyboardLayout(layoutName);
 }
 
+// An ALREADY-LOADED layout's data, for the synchronous paths that cannot await:
+// a host's per-keystroke ligature lookup runs inside an `input` handler, where
+// awaiting would reorder text mutation against the browser's own processing.
+// Throws rather than returning empty — a layout absent here means the caller
+// skipped the async load (setLayout/preloadBuiltInLayouts), and answering with
+// no ligatures would silently spell words wrong instead.
+function loadedLayout(layoutName) {
+    const layout = KEYBOARD_MAPS[layoutName];
+    if (!layout) {
+        throw new Error(`Layout ${layoutName} is not loaded; load it before reading it synchronously`);
+    }
+    return layout;
+}
+
 // Apply a layout to the keyboard (loads, updates labels, makes clickable, updates interception)
 async function setKeyboardLayout(layoutName) {
     console.log('[Shaw Keys] Applying layout:', layoutName);
@@ -3177,6 +3191,11 @@ export const ShawKeys = {
     // Layout management
     getLayout: getShawKeysLayout,
     setLayout: setKeyboardLayout,
+
+    // A loaded layout's own data, synchronously — for a host running its own
+    // input pipeline, whose per-keystroke reads cannot await. Throws if the
+    // layout was never loaded; setLayout and preloadBuiltInLayouts load them.
+    loadedLayout: loadedLayout,
 
     // The built-in layout the library falls back to when the ACTIVE custom is
     // deleted. The host sets its game default (igc) once at init; rosterDelete

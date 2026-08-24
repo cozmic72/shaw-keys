@@ -511,5 +511,25 @@ await check('a whitespace-only Shavian name falls back to the Latin one', async 
     `expected the Latin name, got ${JSON.stringify(internal.layoutDisplayName('igc'))}`);
 });
 
+// loadedLayout is the SYNCHRONOUS read the host's per-keystroke ligature lookup
+// needs: inside an `input` handler there is nothing to await against. Its whole
+// value is the throw — an empty layout would drop ligatures and misspell words
+// rather than fail, which is the degradation this library keeps ruling out.
+await check('loadedLayout returns a loaded layout\'s own data', async () => {
+  const { api, internal } = await loadShawKeys();
+  await internal.preloadBuiltInLayouts();
+  const layout = api.loadedLayout('igc');
+  assert(layout, 'loadedLayout returned nothing for a preloaded built-in');
+  assert(layout === await internal.getKeyboardLayoutData('igc'),
+    'loadedLayout must hand back the SAME object the async loader caches');
+  assert(layout.keys, 'the returned layout carries no keys');
+});
+
+await check('loadedLayout throws for a layout that was never loaded', async () => {
+  const { api } = await loadShawKeys();
+  await assertRejects(async () => api.loadedLayout('igc'),
+    'reading an unloaded layout synchronously must throw, not answer empty');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -268,6 +268,20 @@ its own name in the `displayName` / `shavianDisplayName` fields of its
 The other `keyboard_layout_*.json` files are experimental and not registered.
 They load if named explicitly but are not offered in the picker.
 
+### Reading a layout's data
+
+`setLayout` loads a layout; `preloadBuiltInLayouts` loads all five built-ins.
+Both are async, because the first read of a layout fetches its JSON.
+
+`loadedLayout(id)` then returns that layout's data **synchronously**, for a host
+running its own input pipeline: a per-keystroke ligature lookup happens inside an
+`input` handler, and awaiting there would reorder the host's text mutation
+against the browser's own input processing.
+
+It throws if the layout was never loaded. A host that has called neither loader
+has a bug, and answering it with an empty layout would silently drop ligatures —
+spelling words wrong rather than failing.
+
 ## Configuration
 
 ### UI strings
