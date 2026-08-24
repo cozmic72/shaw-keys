@@ -217,6 +217,14 @@ const NAME_CAP_GRAPHEMES = 20;
 // already owns a top-level `VS1`.
 const VS1_VARIATION_SELECTOR = '︀';
 
+// The ligature suppressor. A key may bind it alone, or prefixed to one letter
+// ("⁞𐑩" on JAFL's shift+D), and it means: whatever precedes me must not
+// combine with whatever follows me. It is a fold BARRIER, not text — the fold
+// pass consumes it, because the player types against target text that contains
+// none, and a retained one would mismatch every target on the first suppressed
+// letter. See docs/decisions.md, "The ligature suppressor".
+const LIGATURE_SUPPRESSOR = '⁞';
+
 // Typographic quotes an OS or editor substitutes for the ASCII key the user
 // actually pressed, mapped back to that key. Layouts bind the physical keys
 // ' and " (U+0027, U+0022); macOS "smart quotes" and equivalents rewrite a
@@ -2695,9 +2703,27 @@ function getComponentToLigature(layout) {
     return mapping;
 }
 
-// Form ligatures in the input value
+// Form ligatures in the input value. A suppressor in the value is a barrier: no
+// fold may span it, and it is consumed rather than left in the result. Folding
+// therefore runs over the tail alone — the run after the last suppressor — and
+// the head keeps only the text, with its own suppressors already spent.
 function formLigatures(value, componentToLigature) {
-    if (!value || Object.keys(componentToLigature).length === 0) {
+    if (!value) {
+        return value;
+    }
+    const lastBarrier = value.lastIndexOf(LIGATURE_SUPPRESSOR);
+    if (lastBarrier !== -1) {
+        const tail = value.slice(lastBarrier + LIGATURE_SUPPRESSOR.length);
+        // A trailing barrier has blocked nothing yet — a key bound to a bare
+        // suppressor must still be armed when the next letter lands, so it stays
+        // in the buffer until something follows it.
+        if (tail.length === 0) {
+            return value;
+        }
+        const head = value.slice(0, lastBarrier).split(LIGATURE_SUPPRESSOR).join('');
+        return head + formLigatures(tail, componentToLigature);
+    }
+    if (Object.keys(componentToLigature).length === 0) {
         return value;
     }
 

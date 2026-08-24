@@ -80,6 +80,7 @@ function shiftedTokenOf(token) {
 // ---------------------------------------------------------------------------
 
 const VS1_SELECTOR = '︀';  // variation selector 1, glued onto a base letter
+const LIGATURE_SUPPRESSOR = '⁞';  // U+205E; blocks a fold, consumed by it
 
 // The required target set: the 48 Shavian letters (U+10450–U+1047F) + the namer
 // dot '·' + the period '.'. Computed from the range, not a magic 50.
@@ -110,7 +111,13 @@ function vs1TargetChars() {
 function producibleChars(bare) {
     const keys = (bare && bare.keys) || {};
     const ligatures = (bare && bare.ligatures) || {};
-    const produced = new Set(Object.values(keys));
+    // A suppressor-prefixed key still produces its letter — the suppressor is
+    // consumed by the fold, so it is not itself a producible character. A key
+    // bound to a bare suppressor produces nothing.
+    const produced = new Set(
+        Object.values(keys)
+            .map(binding => binding.split(LIGATURE_SUPPRESSOR).join(''))
+            .filter(binding => binding.length > 0));
     const componentToLigature = getComponentToLigature({ ligatures });
     // Fixpoint: a compound becomes producible once all its components are, which
     // may in turn unlock a compound built from it. Loop until nothing new appears.
@@ -165,16 +172,31 @@ function isSingleGrapheme(value) {
     if (typeof value !== 'string' || value.length === 0) {
         return false;
     }
-    const VS1 = '︀';  // variation selector 1, glued onto a base letter
     const chars = Array.from(value);  // code points, not UTF-16 units
     if (chars.length === 1) {
         return true;
     }
     // A base letter plus a glued VS1 (e.g. 𐑺 + VS1 = the "yeah" letter).
-    if (chars.length === 2 && chars[1] === VS1) {
+    if (chars.length === 2 && chars[1] === VS1_SELECTOR) {
         return true;
     }
     return false;
+}
+
+// A key binding: one grapheme, or the ligature suppressor alone, or the
+// suppressor prefixed to one grapheme ("⁞𐑩"). The suppressor is the ONLY
+// multi-character binding there is — a general one was considered and rejected
+// (see docs/decisions.md, "The ligature suppressor"), so any other multi-glyph
+// value is a malformed layout and the caller must say so.
+function isValidKeyBinding(value) {
+    if (typeof value !== 'string' || value.length === 0) {
+        return false;
+    }
+    if (!value.startsWith(LIGATURE_SUPPRESSOR)) {
+        return isSingleGrapheme(value);
+    }
+    const suppressed = value.slice(LIGATURE_SUPPRESSOR.length);
+    return suppressed.length === 0 || isSingleGrapheme(suppressed);
 }
 
 // Reject a NON-CONVERGING ligature table. formLigatures folds the typed suffix
@@ -263,10 +285,12 @@ function validateLayout(layoutObj) {
         if (!ALLOWED_KEY_TOKENS.has(token)) {
             throw new Error(`Unknown physical key "${token}" in "keys".`);
         }
-        if (!isSingleGrapheme(value)) {
+        if (!isValidKeyBinding(value)) {
             throw new Error(
-                `Key "${token}" maps to "${value}", which is not a single ` +
-                `character (multi-letter bindings belong in "ligatures").`);
+                `Key "${token}" maps to "${value}", which is neither a single ` +
+                `character nor the ligature suppressor "${LIGATURE_SUPPRESSOR}" ` +
+                `on its own or before one character (other multi-letter ` +
+                `bindings belong in "ligatures").`);
         }
     }
 

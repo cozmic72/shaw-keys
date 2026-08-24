@@ -52,6 +52,9 @@ function shiftOf(token) {
 // ---------------------------------------------------------------------------
 const PALETTE_COLUMNS = 10;
 
+// U+205E, the ligature suppressor. Mirrors the library's own constant.
+const LIGATURE_SUPPRESSOR = '⁞';
+
 const SHAVIAN_PALETTE = [
     // consonants
     '𐑐', '𐑚', '𐑑', '𐑛', '𐑒', '𐑒︀', '𐑜', '𐑜︀', '𐑓', '𐑝', '𐑔', '𐑞',
@@ -839,9 +842,16 @@ function targetHoldsOneGlyph(target) {
 // survives whole. Its notion of a grapheme is what CustomLayouts.isSingleGrapheme
 // accepts at Save, so trimming here means a key binding can no longer reach Save
 // in a state that fails it.
+//
+// The ligature suppressor is the one binding wider than a grapheme: it survives
+// as a prefix on the letter it suppresses (and alone, when nothing follows it),
+// which is exactly what CustomLayouts.isValidKeyBinding accepts.
 function lastGrapheme(value) {
-    const graphemes = toGraphemes(value);
-    return graphemes.length === 0 ? '' : graphemes[graphemes.length - 1];
+    const suppressed = value.startsWith(LIGATURE_SUPPRESSOR);
+    const body = suppressed ? value.slice(LIGATURE_SUPPRESSOR.length) : value;
+    const graphemes = toGraphemes(body);
+    const last = graphemes.length === 0 ? '' : graphemes[graphemes.length - 1];
+    return suppressed ? LIGATURE_SUPPRESSOR + last : last;
 }
 
 // Trim the focused target's field to one glyph once the input method has
@@ -1577,6 +1587,7 @@ export const LayoutEditor = {
     _orderedFocusTargets: orderedFocusTargets,
     _bindableKeyTokens: bindableKeyTokens,
     _capNameInput: capNameInput,
+    _lastGrapheme: lastGrapheme,
     _trimFocusedInputToOneGlyph: trimFocusedInputToOneGlyph,
     _onGlyphInputCompositionEnd: onGlyphInputCompositionEnd,
     _onGlyphInputInput: onGlyphInputInput,

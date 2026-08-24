@@ -323,6 +323,7 @@ node tools/quote_substitution_test.mjs
 node tools/unbound_quote_test.mjs
 node tools/destination_routing_test.mjs
 node tools/settings_migration_test.mjs
+node tools/ligature_suppressor_test.mjs
 ```
 
 The wider suites that cover this code (`layout_editor_test.mjs` and its
