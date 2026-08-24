@@ -351,10 +351,15 @@ Consequences:
   `lastGrapheme` — so the one function enforcing "a key binds one glyph" now has an exception in it.
 - An OLD build importing a layout with a `⁞` binding fails loudly at `validateLayout` with
   "not a single character", shown in the import alert. It does not silently mangle the binding.
-- **`⁞` is on no layout but JAFL's shift+D and shift+J, and is not in the editor's glyph palette**,
-  so a custom layout can only bind it by typing it from a JAFL-derived layout or by hand-editing
-  the exported JSON. Adding it to the palette contradicts the 56-cell assertion in `shaw-type`'s
-  `tools/layout_editor_test.mjs` and is the owner's call.
+- `⁞` is on no layout but JAFL's shift+D and shift+J, so the editor's glyph palette is the only
+  route to it in a custom layout. It sits in the palette's punctuation tail beside `.` and `·`,
+  not in the letter grid, because it is not a Shavian letter.
+- **`pickGlyph` composes on a lone suppressor**: picking `⁞`, then a letter, yields `⁞<letter>`.
+  Every other pick replaces the binding whole, so this is the one composing pair — a general
+  composing pick would silently concatenate two ordinary glyphs into an invalid binding.
+- The palette renders in `Inter-Alia`, which is chosen for the Shavian block and the VS1 variants.
+  Whether it carries U+205E is **unverified** — if it does not, the cell falls back to a system
+  font or shows a missing-glyph box. It stays pickable either way.
 
 Considered and rejected: general multi-character key values and ligature right-hand sides (the
 owner chose special-casing, so an arbitrary string on a key stays an error); retaining `⁞` in the

@@ -68,6 +68,11 @@ const SHAVIAN_PALETTE = [
     '𐑸', '𐑹', '𐑺', '𐑺︀', '𐑻', '𐑻︀', '𐑼', '𐑽', '𐑾', '𐑿',
     // period and naming dot — both are required bindings (see REQUIRED_CHARS).
     '.', '·',
+    // The ligature suppressor. Not a Shavian letter, so it joins the punctuation
+    // tail rather than the letter grid; the palette is the only way to bind it,
+    // since no layout but JAFL carries it. Picking it, then a letter, composes
+    // "⁞<letter>" — see pickGlyph.
+    LIGATURE_SUPPRESSOR,
 ];
 
 // Palette display order. Rows 1-4 are the first 40 block letters in codepoint
@@ -75,8 +80,9 @@ const SHAVIAN_PALETTE = [
 // (voiced) partners, an offset of exactly +10 = the row width, so a ten-wide grid
 // stands each voiceless letter directly above its voiced partner — the reader key
 // from Androcles and the Lion. Row 5 is the eight compounds; row 6 is the six VS1
-// variants then the period and the naming dot. Both tail rows are short and the
-// grid left-aligns them (see .le-palette in layout-editor.css).
+// variants, the period, the naming dot and the ligature suppressor. Both tail
+// rows are short and the grid left-aligns them (see .le-palette in
+// layout-editor.css).
 // First glyph of each short tail row — the cells that must start a fresh row.
 const PALETTE_ROW_STARTS = { compounds: '𐑸', vs1: '𐑺︀' };
 
@@ -84,7 +90,7 @@ const PALETTE_DISPLAY = (function buildPaletteDisplay() {
     const order = [];
     for (let cp = 0x10450; cp < 0x10450 + 4 * PALETTE_COLUMNS; cp++) order.push(String.fromCodePoint(cp));
     for (let cp = 0x10450 + 4 * PALETTE_COLUMNS; cp <= 0x1047F; cp++) order.push(String.fromCodePoint(cp));
-    order.push('𐑺︀', '𐑻︀', '𐑒︀', '𐑜︀', '𐑢︀', '𐑤︀', '.', '·');
+    order.push('𐑺︀', '𐑻︀', '𐑒︀', '𐑜︀', '𐑢︀', '𐑤︀', '.', '·', LIGATURE_SUPPRESSOR);
     const inventory = new Set(SHAVIAN_PALETTE);
     if (order.length !== inventory.size || order.some(g => !inventory.has(g))) {
         throw new Error('Layout editor: palette display order does not match the glyph inventory.');
@@ -402,11 +408,18 @@ function onPalettePointerDown(ev) {
 // editable #leGlyphInput seeded with its binding and selected whole, so writing
 // the glyph in and blurring runs the ONE commit path every other input route
 // uses (commitFocusTarget) — no second insertion implementation.
+//
+// Picking a letter onto a target already holding a lone suppressor COMPOSES
+// "⁞<letter>" rather than replacing it. That is the only route to a suppressed
+// binding from the palette: the suppressor is a prefix, and every other pick is
+// a whole binding, so composing on any other pair would silently concatenate.
 function pickGlyph(glyph) {
     if (!state.focusTarget) {
         throw new Error('Layout editor: palette picked a glyph with no focused target.');
     }
-    state.glyphInput.value = glyph;
+    const held = focusTargetBinding(state.focusTarget);
+    const composing = held === LIGATURE_SUPPRESSOR && glyph !== LIGATURE_SUPPRESSOR;
+    state.glyphInput.value = composing ? LIGATURE_SUPPRESSOR + glyph : glyph;
     closePalette();
     clearFocusTarget();
 }
