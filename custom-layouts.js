@@ -80,7 +80,7 @@ function shiftedTokenOf(token) {
 // ---------------------------------------------------------------------------
 
 const VS1_SELECTOR = '︀';  // variation selector 1, glued onto a base letter
-const LIGATURE_SUPPRESSOR = '⁞';  // U+205E; blocks a fold, consumed by it
+const LIGATURE_SUPPRESSOR = '⁞';  // U+205E; a key prefix, never buffer text
 
 // The required target set: the 48 Shavian letters (U+10450–U+1047F) + the namer
 // dot '·' + the period '.'. Computed from the range, not a magic 50.
@@ -111,9 +111,9 @@ function vs1TargetChars() {
 function producibleChars(bare) {
     const keys = (bare && bare.keys) || {};
     const ligatures = (bare && bare.ligatures) || {};
-    // A suppressor-prefixed key still produces its letter — the suppressor is
-    // consumed by the fold, so it is not itself a producible character. A key
-    // bound to a bare suppressor produces nothing.
+    // A suppressor-prefixed key still produces its letter — the suppressor never
+    // reaches the buffer, so it is not itself a producible character. A key bound
+    // to a bare suppressor produces nothing.
     const produced = new Set(
         Object.values(keys)
             .map(binding => binding.split(LIGATURE_SUPPRESSOR).join(''))

@@ -168,6 +168,19 @@ function insertTappedGlyph(input, glyph) {
     withEditableInput(input, () => insertGlyphAtCaret(input, glyph, true));
 }
 
+// A tapped key, suppressor keys included. Arms suppression when the binding
+// carries "⁞", then emits whatever letter is left — nothing at all for a bare
+// suppressor, which is why this returns early rather than inserting an empty
+// string: the host must see no `input` event for a keystroke that typed no text.
+function typeTappedKey(input, binding) {
+    const glyph = pressBinding(binding);
+    if (!glyph) {
+        return;
+    }
+    insertTappedGlyph(input, glyph);
+    dispatchInputEvent(input, 'insertText', glyph);
+}
+
 function deleteTappedGlyph(input) {
     withEditableInput(input, () => deleteBackwardAtCaret(input));
 }
@@ -218,12 +231,38 @@ const NAME_CAP_GRAPHEMES = 20;
 const VS1_VARIATION_SELECTOR = '︀';
 
 // The ligature suppressor. A key may bind it alone, or prefixed to one letter
-// ("⁞𐑩" on JAFL's shift+D), and it means: whatever precedes me must not
-// combine with whatever follows me. It is a fold BARRIER, not text — the fold
-// pass consumes it, because the player types against target text that contains
-// none, and a retained one would mismatch every target on the first suppressed
-// letter. See docs/decisions.md, "The ligature suppressor".
+// ("⁞𐑩" on JAFL's shift+D). It never enters the buffer: pressing such a key
+// ARMS the one-shot flag below, and a "⁞𐑩" key arms it and emits 𐑩 in the same
+// press. See docs/decisions.md, "The ligature suppressor".
 const LIGATURE_SUPPRESSOR = '⁞';
+
+// The armed one-shot suppression flag — the single copy for BOTH engines. The
+// library's own tap and interception paths consume it directly; the site's
+// separate fold engine reads it through VirtualKeyboard.consumeLigatureSuppression,
+// so a player switching between the on-screen keyboard and physical typing mid-word
+// cannot see the two disagree.
+let ligatureSuppressionArmed = false;
+
+// Press a key binding: arm suppression if it carries "⁞", and return the text
+// the key types — '' for a bare suppressor, which types nothing at all. The one
+// spelling of what a suppressor key DOES, shared by the tap path, the
+// interception path and translateInputEvent.
+function pressBinding(binding) {
+    if (typeof binding !== 'string' || !binding.startsWith(LIGATURE_SUPPRESSOR)) {
+        return binding;
+    }
+    ligatureSuppressionArmed = true;
+    return binding.slice(LIGATURE_SUPPRESSOR.length);
+}
+
+// Read and disarm. Every keystroke calls this — insertion, backspace, a key that
+// could never have folded — because the flag lives for exactly one keystroke
+// whatever that keystroke turns out to be.
+function consumeLigatureSuppression() {
+    const armed = ligatureSuppressionArmed;
+    ligatureSuppressionArmed = false;
+    return armed;
+}
 
 // Typographic quotes an OS or editor substitutes for the ASCII key the user
 // actually pressed, mapped back to that key. Layouts bind the physical keys
@@ -791,8 +830,10 @@ function translateInputEvent(e, browserInput, currentLayout, useShawKeys, debugF
             const physicalKey = physicalKeyFor(eventData);
 
             if (!isShavian && keyboardMap[physicalKey]) {
-                // Input is Latin and has a mapping - translate it
-                const translatedChar = keyboardMap[physicalKey];
+                // Input is Latin and has a mapping - translate it. A suppressor
+                // key arms the flag and hands back only its letter, so the host's
+                // buffer never sees "⁞"; a bare one hands back nothing at all.
+                const translatedChar = pressBinding(keyboardMap[physicalKey]);
                 if (debugFn) {
                     debugFn('⌨️  Translating: "' + eventData + '" → "' + translatedChar + '" [' +
                            eventData.split('').map(c => 'U+' + c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')).join(' ') +
@@ -1393,10 +1434,7 @@ function makeKeysClickable(keyboardMap) {
             }
 
             if (shavianChar) {
-                insertTappedGlyph(typingInput, shavianChar);
-
-                // Trigger input event so the game logic processes it
-                dispatchInputEvent(typingInput, 'insertText', shavianChar);
+                typeTappedKey(typingInput, shavianChar);
 
                 // Auto-release shift after typing a character
                 if (isShiftActive) {
@@ -1450,10 +1488,7 @@ function makeKeysClickable(keyboardMap) {
             const shavianChar = newKey.getAttribute('data-shavian');
 
             if (shavianChar) {
-                insertTappedGlyph(typingInput, shavianChar);
-
-                // Trigger input event so the game logic processes it
-                dispatchInputEvent(typingInput, 'insertText', shavianChar);
+                typeTappedKey(typingInput, shavianChar);
 
                 // Auto-release shift after typing a character
                 if (isShiftActive) {
@@ -2717,25 +2752,12 @@ function getComponentToLigature(layout) {
     return mapping;
 }
 
-// Form ligatures in the input value. A suppressor in the value is a barrier: no
-// fold may span it, and it is consumed rather than left in the result. Folding
-// therefore runs over the tail alone — the run after the last suppressor — and
-// the head keeps only the text, with its own suppressors already spent.
-function formLigatures(value, componentToLigature) {
-    if (!value) {
+// Form ligatures in the input value. `suppressed` is the armed one-shot flag
+// (see consumeLigatureSuppression): true folds nothing this keystroke, so the
+// letter just inserted stands beside its neighbour instead of merging with it.
+function formLigatures(value, componentToLigature, suppressed = false) {
+    if (!value || suppressed) {
         return value;
-    }
-    const lastBarrier = value.lastIndexOf(LIGATURE_SUPPRESSOR);
-    if (lastBarrier !== -1) {
-        const tail = value.slice(lastBarrier + LIGATURE_SUPPRESSOR.length);
-        // A trailing barrier has blocked nothing yet — a key bound to a bare
-        // suppressor must still be armed when the next letter lands, so it stays
-        // in the buffer until something follows it.
-        if (tail.length === 0) {
-            return value;
-        }
-        const head = value.slice(0, lastBarrier).split(LIGATURE_SUPPRESSOR).join('');
-        return head + formLigatures(tail, componentToLigature);
     }
     if (Object.keys(componentToLigature).length === 0) {
         return value;
@@ -2890,7 +2912,7 @@ function insertTextAtCaret(text) {
 // after the freshly-inserted character; we look at the run ending at
 // that point and let formLigatures() collapse any matching component
 // pair. Cheap: only inspects the local text node, not the whole tree.
-function formLigaturesInContentEditable(host, componentToLigature) {
+function formLigaturesInContentEditable(host, componentToLigature, suppressed) {
     const sel = window.getSelection && window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
     const range = sel.getRangeAt(0);
@@ -2900,7 +2922,7 @@ function formLigaturesInContentEditable(host, componentToLigature) {
     const offset = range.startOffset;
     const before = node.data.substring(0, offset);
     const after = node.data.substring(offset);
-    const formedBefore = formLigatures(before, componentToLigature);
+    const formedBefore = formLigatures(before, componentToLigature, suppressed);
     if (formedBefore === before) return;
     node.data = formedBefore + after;
     const newOffset = formedBefore.length;
@@ -2973,13 +2995,14 @@ function caretRange(element, untrustedCaret) {
 // components (𐑩+𐑮), the way an IME would. The single insertion routine: tapped
 // keys and intercepted keystrokes both land here, so the two routes cannot drift.
 function insertGlyphAtCaret(element, glyph, untrustedCaret = false) {
+    const suppressed = consumeLigatureSuppression();
     if (isContentEditableElement(element)) {
         if (document.execCommand) {
             document.execCommand('insertText', false, glyph);
         } else {
             insertTextAtCaret(glyph);
         }
-        formLigaturesInContentEditable(element, getTapFoldTable());
+        formLigaturesInContentEditable(element, getTapFoldTable(), suppressed);
         return;
     }
     if (!isValueBearingElement(element)) {
@@ -2987,7 +3010,7 @@ function insertGlyphAtCaret(element, glyph, untrustedCaret = false) {
     }
     const { start, end } = caretRange(element, untrustedCaret);
     const before = element.value.substring(0, start) + glyph;
-    const folded = formLigatures(before, getTapFoldTable());
+    const folded = formLigatures(before, getTapFoldTable(), suppressed);
     element.value = folded + element.value.substring(end);
     setSelectionSafe(element, folded.length);
 }
@@ -2996,6 +3019,7 @@ function insertGlyphAtCaret(element, glyph, untrustedCaret = false) {
 // tap path calls this — a physical Backspace on a keyboard-enabled field is left
 // to the browser — so the caret is always the untrusted kind.
 function deleteBackwardAtCaret(element) {
+    consumeLigatureSuppression();
     if (isContentEditableElement(element)) {
         deleteBackwardInContentEditable();
         return;
@@ -3072,7 +3096,10 @@ function enableKeystrokeInterception(inputElement, options = {}) {
         if (!isShavian && (boundGlyph || insertsItsOwnKey)) {
             e.preventDefault();
 
-            const translatedChar = boundGlyph || physicalKey;
+            const translatedChar = boundGlyph ? pressBinding(boundGlyph) : physicalKey;
+            if (!translatedChar) {
+                return;   // a bare suppressor key: it armed, and types nothing
+            }
 
             insertGlyphAtCaret(inputElement, translatedChar);
             dispatchInputEvent(inputElement, 'insertText', translatedChar);
@@ -3170,7 +3197,8 @@ function destroyShawKeys() {
 
 // Named exports for the sibling modules. The supported host surface is the
 // ShawKeys object below.
-export { getComponentToLigature, formLigatures, isBuiltInLayoutName };
+export { getComponentToLigature, formLigatures, isBuiltInLayoutName,
+         pressBinding, consumeLigatureSuppression };
 
 // New namespaced API - cleaner and more organized
 export const ShawKeys = {
@@ -3266,6 +3294,12 @@ export const ShawKeys = {
     // from a layout's `ligatures`; formLigatures folds a value against it.
     getComponentToLigature: getComponentToLigature,
     formLigatures: formLigatures,
+
+    // The armed one-shot ligature-suppression flag, shared with a host that runs
+    // its own fold engine (shaw-type's InputHandler). The host consumes it once
+    // per keystroke and passes the result to its own formLigatures, so the two
+    // engines suppress the same keystrokes.
+    consumeLigatureSuppression: consumeLigatureSuppression,
 
     // Advanced/internal (exposed for compatibility, and for sibling library
     // files — layout-editor.js resolves resource URLs and fires layout-change

@@ -312,11 +312,11 @@ so it survives a clone of that repository, but not of this one.
 
 ---
 
-## The ligature suppressor is a consumed fold barrier, special-cased to one character
+## The ligature suppressor is a one-shot armed flag, not a character in the buffer
 
-PROPOSED — added 2026-08-24 (agent). The special-casing over general multi-character key support
-is the owner's decision; the consumed-not-retained behaviour below is the agent's, and the owner
-did not specify it.
+PROPOSED — added 2026-08-24 (agent), reworked 2026-08-24 to the owner's spec. The special-casing
+over general multi-character key support is the owner's decision, and so is the temporal model
+below; the barrier model it replaced was the agent's.
 
 A layout that folds `𐑦`+`𐑩` into `𐑾` gives the typist no way to write the two letters side by
 side, and JAFL folds on both `𐑩` and `𐑮` — the right-hand sides of `𐑾`, `𐑼`, `𐑹`, `𐑸`, `𐑽`,
@@ -324,31 +324,39 @@ side, and JAFL folds on both `𐑩` and `𐑮` — the right-hand sides of `𐑾
 the single grapheme [`custom-layouts.js`](../custom-layouts.js) `isSingleGrapheme` had enforced
 everywhere.
 
-We will treat U+205E `⁞` as a fold barrier rather than as text, and admit it as the ONLY
-multi-character key binding: a key may bind it alone, or prefixed to one grapheme (`⁞𐑩`). Any
-other multi-character binding stays an error — [`custom-layouts.js`](../custom-layouts.js)
-`isValidKeyBinding`.
+We will treat U+205E `⁞` as a **key-binding prefix that arms a one-shot flag**, never as text. It
+is admitted as the ONLY multi-character key binding: a key may bind it alone, or prefixed to one
+grapheme (`⁞𐑩`). Any other multi-character binding stays an error —
+[`custom-layouts.js`](../custom-layouts.js) `isValidKeyBinding`.
 
-**The barrier is consumed by the fold, not retained in the buffer.** The typist is entering
-target text that contains no suppressor, so a retained one would mismatch the target on the first
-suppressed letter and make the word unenterable. It is also not a producible character, so
-`producibleChars` strips it before counting coverage.
+**Pressing a suppressor key mutates state only; `⁞` never enters the buffer.** A bare `⁞` key
+types no text at all and arms the flag. A `⁞𐑩` key arms it and emits `𐑩` in the same press, whose
+own insertion consumes the arm — so one keypress yields a `𐑩` that cannot merge with what precedes
+it.
 
-`formLigatures` ([`shaw-keys.js`](../shaw-keys.js)) folds only the run after the last barrier and
-joins the earlier text with its own barriers already spent, so a barrier bites at exactly the
-fold it sits at. Chained ligatures still resolve around it: on JAFL, `𐑦` `⁞𐑩` `𐑮` gives `𐑦𐑼` —
-the first link blocked, the second still folding.
+**The arm lives for exactly one keystroke, whatever that keystroke is.** It is consumed by the
+next key press unconditionally — a letter that could never have folded, or a backspace, spends it
+just as a foldable letter does. Nothing else clears or extends it: not focus loss, not word end.
 
 Consequences:
 
-- A **trailing** barrier is the one that must survive: a key bound to a bare `⁞` blocks nothing on
-  the keystroke that inserts it, so it stays in the buffer until a letter follows. A buffer can
-  therefore end in a suppressor, and any consumer reading a partial buffer sees it.
-- The site keeps its own fold engine (`InputHandler.formLigatures` in `shaw-type`'s
-  `src/site/input-handler.js`) and needed the same barrier logic written twice. The two engines
-  were already duplicated; this widens the cost of that.
+- **The two engines share one flag, not one algorithm.** The armed state lives in
+  [`shaw-keys.js`](../shaw-keys.js) (`pressBinding` arms it, `consumeLigatureSuppression` spends it) and
+  `shaw-type`'s `src/site/input-handler.js` reads it through
+  `VirtualKeyboard.consumeLigatureSuppression`. The two fold engines stay duplicated, but a player
+  alternating between the on-screen keyboard and physical typing mid-word cannot see them disagree.
+- `formLigatures` is now pure in the suppressor: it takes a `suppressed` boolean and never parses
+  the buffer for a barrier. The buffer is plain text at every instant, so a consumer reading a
+  partial buffer can no longer encounter a `⁞`.
+- **A suppressor keystroke can produce no `input` event.** A bare `⁞` key returns before insertion
+  rather than inserting an empty string, so a host that counts keystrokes from `input` events does
+  not see this one. That is deliberate: no text was typed.
+- The site consumes the flag once per `input` event, before the error-state gate can return early
+  — otherwise a keystroke the error state rejects would leave the arm alive past its one keystroke.
+- Suppression also disables the error-state ligature-completion bypass for that keystroke: no
+  ligature will form, so nothing may claim to be completing one.
 - The editor's trim-to-one-glyph keeps a `⁞` prefix — [`layout-editor.js`](../layout-editor.js)
-  `lastGrapheme` — so the one function enforcing "a key binds one glyph" now has an exception in it.
+  `lastGrapheme` — so the one function enforcing "a key binds one glyph" has an exception in it.
 - An OLD build importing a layout with a `⁞` binding fails loudly at `validateLayout` with
   "not a single character", shown in the import alert. It does not silently mangle the binding.
 - `⁞` is on no layout but JAFL's shift+D and shift+J, so the editor's glyph palette is the only
@@ -361,11 +369,19 @@ Consequences:
   Whether it carries U+205E is **unverified** — if it does not, the cell falls back to a system
   font or shows a missing-glyph box. It stays pickable either way.
 
-Considered and rejected: general multi-character key values and ligature right-hand sides (the
-owner chose special-casing, so an arbitrary string on a key stays an error); retaining `⁞` in the
-buffer (unenterable target text, and two backspaces to undo one keypress).
+Considered and rejected:
 
-→ [`shaw-keys.js`](../shaw-keys.js) `LIGATURE_SUPPRESSOR`, `formLigatures`;
+- **A fold barrier placed in the buffer** — the agent's first model, replaced by the owner. `⁞`
+  sat between two characters; `formLigatures` folded only the run after the last barrier, and a
+  TRAILING barrier was retained in the buffer until something followed it. Rejected because a bare
+  `⁞` key then put a character in the input stream that the target text does not contain, leaving
+  the buffer momentarily unenterable and every consumer of a partial buffer obliged to know about
+  `⁞`. Do not reintroduce barrier-parsing into `formLigatures`.
+- General multi-character key values and ligature right-hand sides — the owner chose
+  special-casing, so an arbitrary string on a key stays an error.
+
+→ [`shaw-keys.js`](../shaw-keys.js) `LIGATURE_SUPPRESSOR`, `pressBinding`,
+`consumeLigatureSuppression`, `formLigatures`;
 [`custom-layouts.js`](../custom-layouts.js) `isValidKeyBinding`, `producibleChars`;
 [`keyboard_layout_jafl.json`](../keyboard_layout_jafl.json) keys `D`/`J`;
 `tools/ligature_suppressor_test.mjs`.

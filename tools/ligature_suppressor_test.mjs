@@ -1,7 +1,7 @@
 // The ligature suppressor (U+205E). A key may bind it alone, or prefixed to one
-// letter ("⁞𐑩" on JAFL's shift+D), and it stops the letters either side of it
-// combining. The fold consumes it, so the buffer stays comparable with target
-// text that contains none. See docs/decisions.md, "The ligature suppressor".
+// letter ("⁞𐑩" on JAFL's shift+D). Pressing one ARMS a one-shot flag that the
+// next keystroke consumes; the glyph itself never enters the buffer. See
+// docs/decisions.md, "The ligature suppressor".
 //
 // Usage: node tools/ligature_suppressor_test.mjs
 
@@ -24,7 +24,8 @@ globalThis.localStorage = {
     setItem(k, v) { this._v[k] = String(v); }, removeItem(k) { delete this._v[k]; },
 };
 
-const { formLigatures } = await import(pathToFileURL(path.join(HERE, 'shaw-keys.js')));
+const { formLigatures, pressBinding, consumeLigatureSuppression } =
+    await import(pathToFileURL(path.join(HERE, 'shaw-keys.js')));
 const { CustomLayouts } = await import(pathToFileURL(path.join(HERE, 'custom-layouts.js')));
 const { LayoutEditor } = await import(pathToFileURL(path.join(HERE, 'layout-editor.js')));
 
@@ -47,12 +48,19 @@ const FOLD = (() => {
     return map;
 })();
 
-// Typing is one insertion at a time, and the fold runs after each — the state a
-// suppressor has to survive. Folding the finished string in one go would not
-// exercise it.
+// Typing is one insertion at a time, and the fold runs after each. A stroke here
+// is a KEY BINDING, so "⁞𐑩" is one press: it arms suppression and emits 𐑩, and
+// the arm is consumed by that same insertion. SUP alone is a press that emits
+// nothing. This mirrors what insertGlyphAtCaret does per keystroke.
 function type(strokes) {
     let buffer = '';
-    for (const stroke of strokes) buffer = formLigatures(buffer + stroke, FOLD);
+    for (const stroke of strokes) {
+        const glyph = pressBinding(stroke);
+        // A bare suppressor types no text, so nothing consumes the arm on that
+        // press — exactly as the real key path returns before insertGlyphAtCaret.
+        if (glyph === '') continue;
+        buffer = formLigatures(buffer + glyph, FOLD, consumeLigatureSuppression());
+    }
     return buffer;
 }
 
@@ -95,20 +103,60 @@ check('CHAIN: suppressing the SECOND link keeps the first fold', () => {
     assert(got === '𐑾𐑮', 'got ' + JSON.stringify(got));
 });
 
-// ---- A key bound to a BARE suppressor. It blocks nothing on the keystroke that
-// inserts it, so it has to stay in the buffer until a letter follows. ----
+// ---- A key bound to a BARE suppressor. It types no text at all; it only arms
+// the flag, which the NEXT keystroke consumes. ----
 
-check('a bare ⁞ typed between two letters suppresses their fold', () => {
+check('a bare ⁞ pressed between two letters suppresses their fold', () => {
     const got = type(['𐑦', SUP, '𐑩']);
     assert(got === '𐑦𐑩', 'got ' + JSON.stringify(got));
 });
 
-check('a trailing bare ⁞ stays armed in the buffer', () => {
-    assert(formLigatures('𐑦' + SUP, FOLD) === '𐑦' + SUP);
+check('a bare ⁞ press puts NO glyph in the buffer', () => {
+    assert(type([SUP]) === '', 'got ' + JSON.stringify(type([SUP])));
+    assert(type(['𐑦', SUP]) === '𐑦', 'got ' + JSON.stringify(type(['𐑦', SUP])));
 });
 
-check('a suppressor never reaches a settled buffer', () => {
-    assert(!type(['𐑦', SUP + '𐑩', '𐑮']).includes(SUP), 'the suppressor was retained');
+check('the suppressor never reaches the buffer by any route', () => {
+    for (const strokes of [[SUP], ['𐑦', SUP], ['𐑦', SUP + '𐑩'], ['𐑦', SUP, '𐑩'],
+                           ['𐑦', SUP + '𐑩', '𐑮']]) {
+        assert(!type(strokes).includes(SUP),
+            'retained a suppressor: ' + JSON.stringify(type(strokes)));
+    }
+});
+
+// ---- The arm lives for EXACTLY one keystroke, whatever that keystroke is. ----
+
+check('the arm is consumed by a keystroke that could never have folded', () => {
+    // After ⁞, the 𐑦 consumes the arm although 𐑚+𐑦 is on no ligature's left-hand
+    // side and nothing could have folded anyway. The arm is spent regardless, so
+    // the following 𐑦+𐑩 folds normally.
+    const got = type(['𐑚', SUP, '𐑦', '𐑩']);
+    assert(got === '𐑚𐑾', 'the arm outlived the keystroke that consumed it: ' +
+        JSON.stringify(got));
+});
+
+check('a lone arm does not survive to suppress a LATER pair', () => {
+    // Press ⁞, then 𐑦 (consumes it), then 𐑩 — which must fold, unsuppressed.
+    const got = type([SUP, '𐑦', '𐑩']);
+    assert(got === '𐑾', 'the arm outlived its one keystroke: ' + JSON.stringify(got));
+});
+
+check('a ⁞𐑩 key arms and emits 𐑩 unmerged in ONE press', () => {
+    assert(type(['𐑦', SUP + '𐑩']) === '𐑦𐑩', 'the single press did not suppress');
+    // And the arm is spent by that same press: the next 𐑮 folds onto 𐑩.
+    assert(type(['𐑦', SUP + '𐑩', '𐑮']) === '𐑦𐑼', 'the arm outlived the press that made it');
+});
+
+check('backspace is a keystroke: it disarms', () => {
+    // deleteBackwardAtCaret consumes without folding, which is this pair of calls.
+    pressBinding(SUP);
+    assert(consumeLigatureSuppression() === true, 'the arm did not take');
+    assert(consumeLigatureSuppression() === false, 'the arm survived being consumed');
+});
+
+check('pressing a NON-suppressor binding returns it unchanged and arms nothing', () => {
+    assert(pressBinding('𐑩') === '𐑩', 'an ordinary binding must type itself');
+    assert(consumeLigatureSuppression() === false, 'an ordinary key must not arm');
 });
 
 // ---- The JAFL layout itself ----
@@ -186,7 +234,7 @@ check('a ⁞ binding survives an export/import round-trip', () => {
     CustomLayouts.validateLayout(reimported);
     assert(reimported.keys.a === SUP + '𐑩', 'the prefixed binding did not survive');
     assert(reimported.keys.s === SUP, 'the bare suppressor did not survive');
-    assert(formLigatures('𐑦' + reimported.keys.a, FOLD) === '𐑦𐑩',
+    assert(type(['𐑦', reimported.keys.a]) === '𐑦𐑩',
         'the re-imported binding no longer suppresses');
 });
 
