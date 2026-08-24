@@ -3264,6 +3264,13 @@ export const ShawKeys = {
         // Picker description resolution + the import splitter — exposed for tests.
         previewDescription: previewDescription,
         splitImportedLayout: splitImportedLayout,
+        // Seams for a consumer's test harness. KEYBOARD_MAPS and libraryScript
+        // are module-scoped, so a test importing this file cannot reach them the
+        // way it could when the library was a classic script sharing one scope.
+        // The public routes are async and fetch (loadKeyboardLayout, setScript),
+        // which a synchronous test cannot drive.
+        registerLayout: (name, layout) => { KEYBOARD_MAPS[name] = layout; },
+        setScriptDirect: (script) => { libraryScript = script; },
         // Manage verbs for a stored custom — hosted by the editor (per-open
         // layout) now that they've left the picker. Each re-renders every surface
         // via notifyLayoutsChanged.
