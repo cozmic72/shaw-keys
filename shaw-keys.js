@@ -3199,6 +3199,15 @@ export const ShawKeys = {
     // Keystroke interception
     enableInterception: enableKeystrokeInterception,
 
+    // For a host that runs its own input pipeline rather than letting the
+    // library intercept: translateInputEvent maps an `input` event's Latin data
+    // to Shavian under the active layout; isEditableElement decides whether a
+    // global key handler should yield to a focused field; resetKeyboardState
+    // clears the dragged position when the host hides the keyboard itself.
+    translateInputEvent: translateInputEvent,
+    isEditableElement: isEditableElement,
+    resetKeyboardState: resetKeyboardState,
+
     // Live ligature preview, driven by the host's input pipeline. The host
     // tells the keyboard whether its current layout forms ligatures
     // (setLigaturePreviewActive) and feeds the text run before the caret on
